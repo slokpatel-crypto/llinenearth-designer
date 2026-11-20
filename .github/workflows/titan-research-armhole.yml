@@ -1,0 +1,125 @@
+name: TITAN — RESEARCH original-body armhole face ownership
+
+on:
+  pull_request:
+    paths:
+      - "scripts/blender/author-linen-earth-officewear.py"
+      - "tests/blender/test_actual_armhole_source_ownership.py"
+      - ".github/workflows/titan-research-armhole.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  actual-cc0-armhole-face-partition-research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Obtain checksum-verified official Blender 4.5.14 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz"
+          if ! curl -fLsS --retry 3 --connect-timeout 30 --max-time 900 \
+            "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" -o "$archive"; then
+            rm -f "$archive"
+            curl -fLsS --retry 3 --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" -o "$archive"
+          fi
+          echo "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3  $archive" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/blender-unpacked"
+          tar -xf "$archive" -C "$RUNNER_TEMP/blender-unpacked"
+          echo "BLENDER_BIN=$RUNNER_TEMP/blender-unpacked/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Bootstrap unchanged pinned Blender Human Base Meshes v1.4.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/blender/bootstrap-human-base-meshes.py
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python scripts/blender/prepare-linen-earth-body.py -- \
+            --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 \
+            --output .cache/linen-earth/linen-earth-officewear-body-base.blend
+      - name: Author unchanged control and explicitly partitioned candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          body=.cache/linen-earth/linen-earth-officewear-body-base.blend
+          before="$(sha256sum "$body" | cut -d' ' -f1)"
+          "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
+            --python scripts/blender/author-linen-earth-officewear.py -- \
+            --output .cache/linen-earth/titan-original-armhole-control.blend
+          "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
+            --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-disjoint-armholes \
+            --output .cache/linen-earth/titan-disjoint-armhole-research.blend
+          after="$(sha256sum "$body" | cut -d' ' -f1)"
+          test "$before" = "$after"
+      - name: Record true scanned source face overlap and evaluated garment crossings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/armhole-evidence"
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-original-armhole-control.blend \
+            --python-exit-code 1 --python tests/blender/test_actual_armhole_source_ownership.py -- \
+            --expect-mode baseline --output "$RUNNER_TEMP/armhole-evidence/baseline.json"
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-disjoint-armhole-research.blend \
+            --python-exit-code 1 --python tests/blender/test_actual_armhole_source_ownership.py -- \
+            --expect-mode disjoint --output "$RUNNER_TEMP/armhole-evidence/disjoint.json"
+          python3 - "$RUNNER_TEMP/armhole-evidence" <<'PY'
+          import json, pathlib, sys
+          root=pathlib.Path(sys.argv[1])
+          base=json.loads((root/"baseline.json").read_text())
+          trial=json.loads((root/"disjoint.json").read_text())
+          assert base["sourceBodySha256"]==trial["sourceBodySha256"]
+          assert base["modelIdentityId"]==trial["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert not base["experimentalDisjointArmholes"] and trial["experimentalDisjointArmholes"]
+          assert base["candidateOnly"] and trial["candidateOnly"]
+          assert not base["productionApproved"] and not trial["productionApproved"]
+          for suffix in ("L","R"):
+              assert base["sourceFaceSelection"]["duplicatedOriginalTorsoSleeveFaces"+suffix] > 0
+              assert trial["sourceFaceSelection"]["duplicatedOriginalTorsoSleeveFaces"+suffix] == 0
+          assert set(base["garmentContactPairs"])==set(trial["garmentContactPairs"])
+          for pair in base["garmentContactPairs"]:
+              before=base["garmentContactPairs"][pair]
+              after=trial["garmentContactPairs"][pair]
+              assert type(before) is int and type(after) is int and min(before,after)>=0
+              print(f"REAL_CC0_CONTACT_DELTA {pair}: {before} => {after} ({after-before:+d})")
+          print("TITAN_DISJOINT_FACE_SOURCE_TRIAL_RESEARCH_ONLY_NO_MESH_APPROVAL")
+          PY
+      - name: Render four original-source research frames without any new model
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libgl1-mesa-dri libopengl0 xvfb
+          scene=.cache/linen-earth/titan-disjoint-armhole-research.blend
+          before="$(sha256sum "$scene" | cut -d' ' -f1)"
+          xvfb-run -a -s "-screen 0 1280x1024x24" env LIBGL_ALWAYS_SOFTWARE=1 \
+            "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir "$RUNNER_TEMP/armhole-evidence/angles" \
+            --width 480 --height 640 --samples 8
+          after="$(sha256sum "$scene" | cut -d' ' -f1)"
+          test "$before" = "$after"
+          python3 - "$RUNNER_TEMP/armhole-evidence/angles" <<'PY'
+          import hashlib, json, pathlib, sys
+          path=pathlib.Path(sys.argv[1])
+          data=json.loads((path/"model-qa-manifest.json").read_text())
+          assert data["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert data["candidateOnly"] and not data["realismApproved"] and not data["tailorApproved"]
+          assert [(v["view"],v["yawDeg"]) for v in data["angles"]]==[
+              ("front",0),("three-quarter",35),("side",90),("back",180)]
+          for view in data["angles"]:
+              frame=path/view["file"]
+              assert frame.is_file() and hashlib.sha256(frame.read_bytes()).hexdigest()==view["sha256"]
+          print("TITAN_ORIGINAL_CC0_FOUR_VIEW_EXPERIMENTAL_CANDIDATE_NOT_APPROVED")
+          PY
+      - name: Archive research only, never production or customer artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-cc0-disjoint-armhole-research-do-not-promote
+          path: ${{ runner.temp }}/armhole-evidence/**
+          if-no-files-found: ignore
+          retention-days: 7
