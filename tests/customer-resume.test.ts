@@ -140,3 +140,31 @@ test("private vault listing carries bounded recorded revision parent without a n
   assert.match(ownerList,/revision.parentRevisionId.length<=220/);
   assert.match(account,/Continues recorded revision \{item.parentRevisionId\}/);
 });
+
+
+test("private saved-look card summarizes only bounded, readable selections without measurement details",()=>{
+  const {summaryForOwnedLockedDesign}=load("src/lib/designer/owned-design-summary.ts") as typeof import("../src/lib/designer/owned-design-summary.ts");
+  const revision=syntheticOwnedRevision();
+  revision.garmentSpec.fabrics.shirt.name="    Linen\\n      Natural  ";
+  revision.garmentSpec.fabrics.trouser.name="Pant".repeat(70);
+  const summary=summaryForOwnedLockedDesign(revision);
+  assert.deepEqual(Object.keys(summary).sort(),["occasion","shirtName","trouserName"]);
+  assert.equal(summary.shirtName,"Linen\\n Natural".replace(/\\n/g," ")); // no control characters or excess spaces
+  assert.equal([...summary.trouserName].length,80);
+  assert.equal(summary.occasion,occasion);
+  assert.equal(JSON.stringify(summary).includes("measurements"),false);
+  assert.equal("bodyProfile" in summary,false);
+  assert.equal("recipeHash" in summary,false);
+});
+
+test("owner-only vault summaries are created strictly after immutable hash verification",()=>{
+  const source=readFileSync("src/app/api/designer/vault/route.ts","utf8");
+  const account=readFileSync("src/app/account/page.tsx","utf8");
+  const listing=source.split('if(action==="listOwned"){')[1]?.split('if(action==="loadOwned"){')[0]||"";
+  assert.match(listing,/verifyLockedDesignRevision\\(revision\\)/);
+  assert.match(listing,/summary:summaryForOwnedLockedDesign\\(revision\\)/);
+  assert.match(listing,/p_owner_user_id:customer.id/);
+  assert.match(account,/item.summary.shirtName/);
+  assert.match(account,/item.summary.trouserName/);
+  assert.match(account,/verify current availability before ordering/);
+});
