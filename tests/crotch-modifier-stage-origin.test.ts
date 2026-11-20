@@ -29,7 +29,7 @@ test("native crotch stage snapshots are research-only and preserve production so
   for(const required of [
     '--experimental-capture-crotch-stages',
     'TITAN_REAL_CROTCH_MODIFIER_STAGES_MATCH_FULL_PREFLIGHT',
-    'assert physical["rejectionReasonCount"] == 10',
+    'assert physical["legacyWaistRejectionReasonCount"] == 10',
     'assert source["changesProductionGeometry"] is False',
     'physical["boundaryIntersections"]["garmentLegToLeg"]',
   ]) assert.ok(workflow.includes(required), required);
