@@ -47,11 +47,11 @@ test("cloud panel scrubs stale details on tab return and compares session before
   assert.match(src, /current !== owner/);
   assert.match(src, /await action\(assertOwner\);\s*await assertOwner\(\);/);
   assert.match(src, /const recovered = await getCloudDesign\(item\.id\);\s*await assertOwner\(\);/);
-  assert.match(src, /await assertOwner\\(\\);[\\s\\S]*?const recovered = importCloudDesignExport\\(window\\.localStorage/);
-  assert.match(src, /await assertOwner\\(\\);\\s*requireSelectedOwner\\(\\);\\s*\\/\\/ Explicit export is safer/);
-  assert.match(src, /visibilityEpoch\\.current\\+\\+/);
-  assert.match(src, /selectedOwner\\.current = null;/);
-  assert.match(src, /selectedOwner\\.current = loadedOwner\\.current;/);
-  assert.match(src, /selectedOwner\\.current !== loadedOwner\\.current/);
-  assert.match(src, /requireSelectedOwner\\(\\);\\s*\\/\\/ The selected cloud record/);
+  assert.match(src, /await assertOwner\(\);[\s\S]*?const recovered = importCloudDesignExport\(window\.localStorage/);
+  assert.match(src, /await assertOwner\(\);\s*requireSelectedOwner\(\);\s*\/\/ Explicit export is safer/);
+  assert.match(src, /visibilityEpoch\.current\+\+/);
+  assert.match(src, /selectedOwner\.current = null;/);
+  assert.match(src, /selectedOwner\.current = loadedOwner\.current;/);
+  assert.match(src, /selectedOwner\.current !== loadedOwner\.current/);
+  assert.match(src, /requireSelectedOwner\(\);\s*\/\/ The selected cloud record/);
 });
