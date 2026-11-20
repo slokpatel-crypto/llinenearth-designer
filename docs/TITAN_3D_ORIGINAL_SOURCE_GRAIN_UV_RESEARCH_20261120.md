@@ -104,3 +104,35 @@ The workflow also archives a **RESEARCH-NOT-PRODUCTION** source-derived
 Blender `.blend` for source/UV seam inspection after all native checks pass;
 it must not be deployed, treated as an approved 3D model, or used to
 manufacture garments without physical evidence.
+
+
+## Measured 2026-11-20 source-face periodic alignment, not a textile release
+
+Source-derived pinned Blender 4.5.14 run [44809344414](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44809344414) **passed native UV, original CC0 six-panel source, preserved world-space contact matrices, unapproved GLB-preflight rejection and all four hashed candidate-only view images**. This experiment adds source-edge weighted union-find constraints that align neighboring UV faces by whole `2π × mesh-measured radius` circumference turns. The front (-Y) edges receive higher priority than rear (+Y) edges. Disallowed/no geometric overlap or original UV modifications.
+
+| Original CC0 panel | Research seam edges before alignment | After alignment | Front seam edges after | Seam length after |
+|---|---:|---:|---:|---:|
+| Shirt torso | 74 | 56 | 0 | 1,297.760 mm |
+| Left sleeve | 65 | 59 | 4 | 1,114.959 mm |
+| Right sleeve | 62 | 50 | 1 | 957.278 mm |
+| Trouser waist | 112 | 62 | 0 | 928.272 mm |
+| Left trouser leg | 0 | 0 | 0 | 0 mm |
+| Right trouser leg | 0 | 0 | 0 | 0 mm |
+| **Total** | **313** | **227** | **5** | **4,298.269 mm** |
+
+Front-facing seam length: **83.357 mm**. Native union-find solved
+**16,364** source-edge face joins and recorded **219 conflicting
+circumference-turn constraints** across six panels. There were no geometric
+mutations; Blender export preflight still explicitly rejected the original
+body/garment asset with the same **16** physical and photographic reasons.
+The original x/z UV0 chart itself had **0 discontinuous edges** and
+**0 collapsed UV triangles** on this source; do **not** interpret the
+experimental 227 edges as an improvement over UV0. This experiment is useful
+only as a measured approach to surface-aware grain mapping with fewer
+artificial rear cuts, before genuine seam topology/warp-weft review.
+
+The 4.3 metres of unsewn UV discontinuity and the five front edges **block
+production use** of this research UV. Geometry proportions, actual neckline
+and armholes, collar/cuffs, trouser crotch, realistic drape and original-photo
+four-angle match remain **unapproved**. Never infer measured cloth repeat,
+pocket/collar construction or real fit from these synthetic/CC0 tests.
