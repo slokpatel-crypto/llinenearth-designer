@@ -71,12 +71,17 @@ def _unwrapped_angles(points, cx, cy):
     return angles
 
 
-def _face_has_collapsed_uv(mesh, polygon, projected, check):
+def _face_has_collapsed_uv(polygon, projected, triangles, check):
+    """Examine only this face's actual triangles (pre-indexed once per mesh).
+
+    Scanning *every* evaluated triangle per polygon would make real CC0
+    garment candidate unwrap quadratic and effectively untestable.
+    """
     uv_by_loop = dict(zip(polygon.loop_indices, projected))
-    for tri in mesh.loop_triangles:
-        if tri.polygon_index != polygon.index:
-            continue
-        status = check([uv_by_loop[i] for i in tri.loops])
+    if not triangles:
+        return True
+    for loops in triangles:
+        status = check([uv_by_loop[i] for i in loops])
         if status is not None:
             return True
     return False
@@ -96,6 +101,9 @@ def apply_source_grain_uv(obj, preflight):
     if mesh.uv_layers.get(UV_NAME):
         raise RuntimeError("Research UV cannot overwrite a prior UV trial.")
     mesh.calc_loop_triangles()
+    triangles_by_polygon = {}
+    for tri in mesh.loop_triangles:
+        triangles_by_polygon.setdefault(tri.polygon_index, []).append(tuple(tri.loops))
     original_hash = geometry_fingerprint(obj)
     old_active_name = mesh.uv_layers.active.name if mesh.uv_layers.active else None
     old_uv = [
@@ -129,12 +137,12 @@ def apply_source_grain_uv(obj, preflight):
                 for vertex, theta in zip(vertices, _unwrapped_angles(vertices, cx, cy))
             ]
             count["cylindricalFaces"] += 1
-        if _face_has_collapsed_uv(mesh, polygon, projected, preflight.uv_triangle_issue):
+        if _face_has_collapsed_uv(polygon, projected, triangles_by_polygon.get(polygon.index), preflight.uv_triangle_issue):
             n = (abs(normal.x), abs(normal.y), abs(normal.z))
             axis = max(range(3), key=lambda i: n[i])
             projected = [_normal_projection(v, axis) for v in vertices]
             count["fallbackFaces"] += 1
-        if _face_has_collapsed_uv(mesh, polygon, projected, preflight.uv_triangle_issue):
+        if _face_has_collapsed_uv(polygon, projected, triangles_by_polygon.get(polygon.index), preflight.uv_triangle_issue):
             raise RuntimeError(
                 "Real original-source polygon still has degenerate UV triangles: "
                 + obj.name + "/" + str(polygon.index)
