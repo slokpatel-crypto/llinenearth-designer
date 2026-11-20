@@ -145,11 +145,16 @@ export default function AccountPage(){
   }
 
   async function logout(){
-    designLoadEpoch.current++;
-    setActiveDesign(null);setShareUrl("");setEnquiryUrl("");
-    await fetch("/api/customer-auth/logout",{method:"POST"});
-    setMessage("Signed out.");setCodeSent(false);
-    await refresh();
+    accountRefreshEpoch.current++;
+    accountOwner.current=null;
+    clearPrivateAccount();
+    setCustomer(null);setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/customer-auth/logout",{method:"POST"});
+      if(!response.ok)throw new Error("Sign-out not confirmed.");
+      setMessage("Signed out.");setCodeSent(false);
+    }catch{setMessage("Could not confirm sign-out. Refresh before using this shared device.");}
+    finally{try{await refresh();}finally{setBusy(false);}}
   }
 
 
