@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { LockedDesignRevision } from "@/lib/designer/design-lock";
+import { verifyLockedDesignRevision } from "@/lib/designer/design-lock";
+import { ownedDesignResumePath } from "@/lib/designer/customer-vault-journey";
 import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/customer-production-outcomes";
 
 type Customer={id?:string;email:string|null};
@@ -34,6 +37,12 @@ export default function AccountPage(){
   const [code,setCode]=useState("");
   const [codeSent,setCodeSent]=useState(false);
   const [designs,setDesigns]=useState<OwnedDesign[]>([]);
+  const [activeDesign,setActiveDesign]=useState<{vaultId:string;revision:LockedDesignRevision}|null>(null);
+  const [shareUrl,setShareUrl]=useState("");
+  const [enquiryUrl,setEnquiryUrl]=useState("");
+  const designLoadEpoch=useRef(0);
+  const accountRefreshEpoch=useRef(0);
+  const accountOwner=useRef<string|null>(null);
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
@@ -45,24 +54,39 @@ export default function AccountPage(){
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
 
-  const refresh=useCallback(async()=>{
-    const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
-    const next=session.customer||null;
-    setCustomer(next);
-    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});return;}
+  const clearPrivateAccount=useCallback(()=>{
+    designLoadEpoch.current++;
+    setActiveDesign(null);setShareUrl("");setEnquiryUrl("");
+    setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);
+    setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
+  },[]);
 
+  const refresh=useCallback(async()=>{
+    const epoch=++accountRefreshEpoch.current;
+    const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
+    if(epoch!==accountRefreshEpoch.current)return;
+    const next:Customer|null=session.customer||null;
+    const owner=next?String(next.id||"")+":"+String(next.email||""):null;
+    if(accountOwner.current!==owner){
+      accountOwner.current=owner;
+      clearPrivateAccount();
+    }
+    setCustomer(next);
+    if(!next)return;
     const [d,m,p]=await Promise.all([
       fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/customer-account/production",{cache:"no-store"}).then(r=>r.json()),
     ]);
+    if(epoch!==accountRefreshEpoch.current||accountOwner.current!==owner)return;
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
+    setActiveDesign(current=>current&&Array.isArray(d.designs)&&d.designs.some((row:OwnedDesign)=>row.vaultId===current.vaultId)?current:null);
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
     setQuotes(Array.isArray(p.quotes)?p.quotes:[]);
     setOrders(Array.isArray(p.orders)?p.orders:[]);
     setOrderEvents(Array.isArray(p.orderEvents)?p.orderEvents:[]);
     setOutcomes(Array.isArray(p.outcomes)?p.outcomes:[]);
-  },[]);
+  },[clearPrivateAccount]);
 
   useEffect(()=>{void refresh();},[refresh]);
 
@@ -112,6 +136,7 @@ export default function AccountPage(){
       });
       const data=await response.json();
       if(!response.ok||!data.deleted) throw new Error(data.error||"Secure copy could not be deleted.");
+      if(kind==="design"&&activeDesign?.vaultId===vaultId){designLoadEpoch.current++;setActiveDesign(null);setShareUrl("");setEnquiryUrl("");}
       setMessage(kind==="design"?"Secure design copy deleted.":"Secure measurement copy deleted.");
       await refresh();
     }catch(error){
@@ -120,9 +145,76 @@ export default function AccountPage(){
   }
 
   async function logout(){
-    await fetch("/api/customer-auth/logout",{method:"POST"});
-    setMessage("Signed out.");setCodeSent(false);
-    await refresh();
+    accountRefreshEpoch.current++;
+    accountOwner.current=null;
+    clearPrivateAccount();
+    setCustomer(null);setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/customer-auth/logout",{method:"POST"});
+      if(!response.ok)throw new Error("Sign-out not confirmed.");
+      setMessage("Signed out.");setCodeSent(false);
+    }catch{setMessage("Could not confirm sign-out. Refresh before using this shared device.");}
+    finally{try{await refresh();}finally{setBusy(false);}}
+  }
+
+
+  async function inspectOwnedDesign(item:OwnedDesign){
+    const epoch=++designLoadEpoch.current;
+    setBusy(true);setMessage("");setActiveDesign(null);setShareUrl("");setEnquiryUrl("");
+    try{
+      const response=await fetch("/api/designer/vault",{
+        method:"POST",headers:{"content-type":"application/json"},
+        cache:"no-store",body:JSON.stringify({action:"loadOwned",vaultId:item.vaultId}),
+      });
+      const data=await response.json() as {revision?:LockedDesignRevision;error?:string};
+      if(!response.ok||!data.revision) throw new Error(data.error||"Saved design is unavailable.");
+      if(!await verifyLockedDesignRevision(data.revision)||
+         data.revision.revisionId!==item.revisionId||
+         data.revision.recipeHash.toLowerCase()!==item.recipeHash.toLowerCase())
+        throw new Error("Stored recipe does not match the account record.");
+      if(epoch===designLoadEpoch.current) setActiveDesign({vaultId:item.vaultId,revision:data.revision});
+    }catch(error){
+      if(epoch===designLoadEpoch.current) setMessage(error instanceof Error?error.message:"Could not inspect saved design.");
+    }finally{if(epoch===designLoadEpoch.current) setBusy(false);}
+  }
+
+  async function shareOwnedDesign(){
+    if(!activeDesign||busy) return;
+    const epoch=designLoadEpoch.current;
+    setBusy(true);setMessage("");setShareUrl("");
+    try{
+      const response=await fetch("/api/designer/share",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify(activeDesign.revision),
+      });
+      const data=await response.json() as {token?:string;error?:string};
+      if(epoch!==designLoadEpoch.current)return;
+      if(!response.ok||!data.token) throw new Error(data.error||"Could not share this locked recipe.");
+      const url=new URL("/share/"+encodeURIComponent(data.token),window.location.origin).toString();
+      setShareUrl(url);
+      try{await navigator.clipboard.writeText(url);if(epoch===designLoadEpoch.current)setMessage("Expiring, measurement-free share link copied.");}
+      catch{if(epoch===designLoadEpoch.current)setMessage("Share link created. Open or copy it from below.");}
+    }catch(error){if(epoch===designLoadEpoch.current)setMessage(error instanceof Error?error.message:"Could not create share link.");}
+    finally{if(epoch===designLoadEpoch.current)setBusy(false);}
+  }
+
+  async function enquireOwnedDesign(){
+    if(!activeDesign||busy) return;
+    const epoch=designLoadEpoch.current;
+    setBusy(true);setMessage("");setEnquiryUrl("");
+    try{
+      const response=await fetch("/api/designer/enquiry",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify(activeDesign.revision),
+      });
+      const data=await response.json() as {href?:string;error?:string};
+      if(epoch!==designLoadEpoch.current)return;
+      if(!response.ok||!data.href||!data.href.startsWith("https://wa.me/"))
+        throw new Error(data.error||"Could not prepare the exact-recipe enquiry.");
+      setEnquiryUrl(data.href);
+      setMessage("Enquiry prepared for the immutable saved revision. Open WhatsApp below to send it.");
+    }catch(error){if(epoch===designLoadEpoch.current)setMessage(error instanceof Error?error.message:"Could not prepare enquiry.");}
+    finally{if(epoch===designLoadEpoch.current)setBusy(false);}
   }
 
   async function acceptQuote(quoteId:string){
@@ -286,10 +378,30 @@ export default function AccountPage(){
             {designs.map(item=><div key={item.vaultId} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:7}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"start",flexWrap:"wrap"}}>
                 <div><strong>{item.revisionId}</strong><div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · integrity hash {item.recipeHash.slice(0,12)}…</div></div>
-                <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1",padding:"7px 10px"}} disabled={busy} onClick={()=>void deleteOwned("design",item.vaultId)}>Delete secure copy</button>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button style={button} disabled={busy} onClick={()=>void inspectOwnedDesign(item)}>View &amp; share</button>
+                  {ownedDesignResumePath(item.vaultId)&&<a style={{...button,textDecoration:"none",background:"#5c6653"}} href={ownedDesignResumePath(item.vaultId)!}>Continue in Designer</a>}
+                  <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1",padding:"7px 10px"}} disabled={busy} onClick={()=>void deleteOwned("design",item.vaultId)}>Delete secure copy</button>
+                </div>
               </div>
             </div>)}
           </div>
+          {activeDesign&&<section aria-label="Saved design details" style={{borderTop:"1px solid #ddd7cc",marginTop:15,paddingTop:15,display:"grid",gap:12}}>
+            <div><span style={statusPill}>Integrity-verified locked revision</span>
+              <h3 style={{margin:"12px 0 4px"}}>{activeDesign.revision.garmentSpec.fabrics.shirt.name} + {activeDesign.revision.garmentSpec.fabrics.trouser.name}</h3>
+              <p style={{fontSize:13,opacity:.7}}>Revision {activeDesign.revision.revisionId} · SHA-256 {activeDesign.revision.recipeHash.slice(0,16)}…</p>
+              <p style={{fontSize:14}}>Shirt: {activeDesign.revision.garmentSpec.shirt.collar} · {activeDesign.revision.garmentSpec.shirt.cuff} · {activeDesign.revision.garmentSpec.shirt.wear}</p>
+              <p style={{fontSize:14}}>Trouser: {activeDesign.revision.garmentSpec.trouser.shape} · {activeDesign.revision.garmentSpec.trouser.rise} · {activeDesign.revision.garmentSpec.trouser.waistband}</p>
+              <p style={{fontSize:13,opacity:.7}}>Stored recipe is immutable. Continuing in Designer starts an editable descendant draft; current fabric stock, measurement fit and production readiness require a new review.</p>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {ownedDesignResumePath(activeDesign.vaultId)&&<a href={ownedDesignResumePath(activeDesign.vaultId)!} style={{...button,textDecoration:"none",background:"#5c6653"}}>Edit as next revision</a>}
+              <button style={button} onClick={()=>void shareOwnedDesign()} disabled={busy}>Create 30-day share link</button>
+              <button style={button} onClick={()=>void enquireOwnedDesign()} disabled={busy}>Prepare WhatsApp enquiry</button>
+            </div>
+            {shareUrl&&<p style={{overflowWrap:"anywhere",fontSize:13}}>Share link (no measurements): <a href={shareUrl} target="_blank" rel="noreferrer">Open shared recipe</a></p>}
+            {enquiryUrl&&<p><a href={enquiryUrl} target="_blank" rel="noopener noreferrer" style={{...button,textDecoration:"none",display:"inline-block"}}>Open prepared WhatsApp message</a></p>}
+          </section>}
           <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:8,marginTop:18}}>
             <input style={input} placeholder="Paste an older design recovery token to claim it" value={claimDesign} onChange={e=>setClaimDesign(e.target.value)}/>
             <button style={button} disabled={busy} onClick={()=>claim("design")}>Link</button>
