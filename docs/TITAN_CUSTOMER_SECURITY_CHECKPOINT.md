@@ -322,3 +322,11 @@ Prior parent matching-head evidence: Full CI #44657065416, Non-3D #44657065342 a
 - **Criterion:** a signed-in customer who explicitly recovers a cloud record can export the versioned brief, recipe and render-set as JSON without changing any browser-local drafts or silently importing a design. The exported JSON is a portable recovery artifact, **not** an operational Designer import or a production lock.
 - **Parent exact-head CI:** CI #44757568825 SUCCESS, Non-3D #44757568840 SUCCESS, disposable PostgreSQL #44757568919 SUCCESS at `a13637bfaddc93d7170c2c6b48205ca975789950`. These do not validate the new commits. Source regression was added but **not executed locally**; matching-head CI, download interaction and mobile/desktop browser QA PENDING.
 - **Next:** build and verify a version-validated explicit Designer import path from recovered cloud recipes with real two-session browser tests. Customer/device pilot, staging, independent security, physical stock/fabric/tailor/native and T1–T6/J1–J6 release gates remain PENDING/BLOCKED. No main merge, Vercel deploy, live migration, live stock changes or paid AI.
+
+
+## 2026-11-20 — isolated cloud-import preservation contract (pending CI)
+- Parent SHA: `5d24018ad826af78e4190a43df7712efe7c70f62` (customer-security PR #863); isolated branch `work/titan-cloud-import-preservation-20261120`.
+- Implementation SHA: `2fd2949c985165421606b789151286fabf0ce204`; regression SHA: `509332ce37af5b9dc8c11bd0b1e2842d7198bad3`.
+- Acceptance slice: explicit versioned cloud export parsing rejects unsupported versions, extra/ownership fields and oversized recipes; import preserves every existing local record, resolves ID collisions, and refuses unreadable/full stores without mutation.
+- Evidence: source regression added at `tests/cloud-design-import.test.ts`; **NOT RUN**. Matching-head CI, browser QA, two-account security review and end-to-end UI wiring **PENDING**. This helper is not exposed to customers yet.
+- No live database, deployment, stock, or physical approval. Next: run exact-head tests and integrate explicit consent UI after verification; verify import identity collision behavior and two-session browser recovery.
