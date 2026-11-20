@@ -1839,7 +1839,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
             aria-valuetext={`${splitPercent}% of original source photo visible`} />
         </div>
       </>}
-      {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay" style={{transform:inspectFit?`scale(${photoInspection.scale})`:"scale(1)",transformOrigin:`${photoInspection.originX}% ${photoInspection.originY}%`,transition:"transform .28s ease"}}>
+      {showBoundaries && ready && !showOriginal && !showCreativeAi && !splitCompare && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay" style={{transform:inspectFit?`scale(${photoInspection.scale})`:"scale(1)",transformOrigin:`${photoInspection.originX}% ${photoInspection.originY}%`,transition:"transform .28s ease"}}>
         {tucked ? <>
           <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
           <path d={PHOTO_TUCKED_LEFT_SLEEVE_CLIP} className="shirtBoundary" />
@@ -1925,7 +1925,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <summary>Preview tools</summary>
       <div>
         <button type="button" onClick={() => setPhotoFocus((value) => value==="full"?"fit":"full")} disabled={!ready} aria-pressed={photoFocus==="fit"}>{inspectFit ? "Full view" : "Zoom fit"}</button>
-        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready || showOriginal || showCreativeAi} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
+        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready || showOriginal || showCreativeAi || splitCompare} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi && !splitCompare}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
         <div className="newDesignerFocusTargets" role="group" aria-label="Inspect photographed garment details">
           {PHOTO_INSPECTION_TARGETS.map(target=><button key={target} type="button" data-photo-focus-target={target} aria-pressed={photoFocus===target} onClick={()=>setPhotoFocus(target)} disabled={!ready}>{PHOTO_INSPECTION_FOCUS[target].label}</button>)}
         </div>

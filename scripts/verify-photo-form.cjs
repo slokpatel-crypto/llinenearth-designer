@@ -718,6 +718,8 @@ async function run(){
     await splitButton.click();
     assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-split"),"true");
     assert.equal(await page.locator(".newDesignerPhotoSplitOriginal").count(),1);
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
+      "the selected-cut diagnostic outline must not be misrepresented over raw source pixels");
     assert.equal(new URL(await page.locator(".newDesignerPhotoSplitOriginal").getAttribute("src"),base).pathname,
       "/designer/studio-wide.webp","wide compare must show the actual original wide-trouser source photograph");
     const splitSlider=page.getByRole("slider",{name:"Original photograph coverage"});
@@ -733,7 +735,7 @@ async function run(){
       "zero original coverage must reveal only the selected fabric");
     await splitSlider.press("End");
     assert.equal(await splitSlider.inputValue(),"100");
-    assert.match(await page.locator(".newDesignerPhotoSplitSource").evaluate(node=>getComputedStyle(node).clipPath),/inset\\(0px 0%/,
+    assert.match(await page.locator(".newDesignerPhotoSplitSource").evaluate(node=>getComputedStyle(node).clipPath),/inset\(0px 0%/,
       "full original coverage must expose the complete unedited source");
     await splitSlider.press("Home");
     for(let i=0;i<50;i++)await splitSlider.press("ArrowRight");

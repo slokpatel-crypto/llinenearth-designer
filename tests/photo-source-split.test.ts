@@ -22,10 +22,13 @@ test("customer slider is only a source overlay, not a saved design or AI source"
   assert.match(component,/data-photo-split=\{splitCompare&&ready&&!showOriginal&&!showCreativeAi/);
   assert.match(component,/style=\{\{clipPath:photoSourceSplitClip\(splitPercent\)\}\}/);
   assert.match(component,/newDesignerPhotoSplitOriginal/);
+  assert.match(component,/showBoundaries && ready && !showOriginal && !showCreativeAi && !splitCompare/);
   assert.match(component,/aria-label="Original photograph coverage"/);
   assert.match(component,/setSplitCompare\(false\);\s*setSplitPercent\(50\);/);
   assert.match(component,/Save exports the selected design, not the split/);
-  assert.doesNotMatch(component,/renderSignature=JSON\.stringify\(\{[^]*splitCompare/);
+  const signature=component.slice(component.indexOf("const renderSignature=JSON.stringify({"),component.indexOf("const requestScope=",component.indexOf("const renderSignature=JSON.stringify({")));
+  assert.ok(signature.length>50 && !signature.includes("splitCompare") && !signature.includes("splitPercent"),
+    "source slider state must not alter the persisted design signature");
   assert.match(component,/const canvas = canvasRef\.current;\s*if \(!canvas \|\| !ready\) return;/);
 });
 

@@ -285,8 +285,8 @@ test("Compare shows original-photo provenance above the canvas instead of select
 
 test("boundary QA belongs only to the ready deterministic garment canvas", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
-  assert.ok(source.includes('disabled={!ready || showOriginal || showCreativeAi} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi}'));
+  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && !splitCompare && <svg className="newDesignerBoundaryQa"'));
+  assert.ok(source.includes('disabled={!ready || showOriginal || showCreativeAi || splitCompare} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi && !splitCompare}'));
   // Boundary outlines are derived from original garment masks and must never
   // be advertised as validated photoreal geometry or source-photo contours.
   assert.ok(source.includes('Garment boundary QA overlay'));
@@ -300,7 +300,7 @@ test("Zoom Fit uses the same scale and origin for the garment canvas and its QA 
   assert.ok(source.includes('transform:inspectFit?`scale(${photoInspection.scale})`:"scale(1)"')); 
   assert.ok(source.includes('transformOrigin:`${photoInspection.originX}% ${photoInspection.originY}%`'));
   assert.ok(source.includes('"--studio-inspect-origin"'));
-  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
+  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && !splitCompare && <svg className="newDesignerBoundaryQa"'));
 });
 
 test("a changed look does not keep a previous photo zoom or diagnostic garment seams", () => {
