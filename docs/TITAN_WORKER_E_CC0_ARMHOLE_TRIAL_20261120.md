@@ -30,5 +30,22 @@ Four unchanged-source camera views were rendered and hashed at 0°/35°/90°/180
 
 Additional pixel-level comparison of the saved 480×640/8-sample native frames (same body, scene, camera and lighting) with the original candidate gave whole-frame RGB RMSE values **0.249 front, 0.343 three-quarter, 0.324 side, 0.482 back** on a 0–255 channel scale. Therefore the contact-count reduction is **not accompanied by a materially different or visibly corrected shirt/trouser silhouette** in these diagnostic render settings. These are internal before/after image diagnostics, not photograph-match acceptance or real garment fit evidence.
 
+
+## Original source cut-edge topology — independently measured (2026-11-20)
+
+Exact native Blender [research run 44784063060](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44784063060) passed using the same pinned real CC0 source body and model identity; the offline pinned-source-mirror tests (3 cases) and native adversarial edge topology fixture passed. The original body face boundaries were independently reconstructed from polygon incidence and measured in original world coordinates:
+
+| Original-source armhole metric | Baseline left / right | Disjoint left / right |
+| --- | --- | --- |
+| Source torso cut edges | 246 / 246 | 246 / 246 |
+| Source sleeve cut edges | 102 / 102 | 82 / 82 |
+| Near-interface torso edges | 38 / 38 | 38 / 38 |
+| Near-interface sleeve edges | 36 / 36 | 38 / 38 |
+| Identical original-source cut edges | 0 / 0 | 38 / 38 |
+| Torso-to-nearest sleeve cut midpoint median | 91.470 / 91.487 mm | 0 / 0 mm |
+| 90th-percentile source cut midpoint distance | 108.658 / 108.728 mm | 0 / 0 mm |
+
+**Interpretation:** The geometry trial improves *original body source polygon ownership*: 38 matching interface source edges on both sides, rather than source selection boundaries separated by approximately 9 cm. This is measured on the original body cut **before** separate garment modifiers. The 88/67 residual torso-sleeve BVH crossings and remaining sleeve/leg crossings remain real. Zero source cut distance must **never** be called closed post-thickness cloth, watertight sewing, calibrated fabric pattern, photographic fit or tailor acceptance. The trial stays unmerged pending post-modifier seam evaluation and original-photograph review.
+
 ## Promotion blockers
 Do not merge this trial until independently reviewed full topology/sewing feasibility, native armhole gap and cuff-to-hand measurements, all 15 garment-panel and body/garment intersections, photographed front/three-quarter/side/back identity and grain/UV orientation checks prove no new defects. Passing synthetic fixtures alone is insufficient; unmeasured fabric repeat, genuine cloth drape and tailor fit must remain unknown. No Vercel deploy or live data mutation.
