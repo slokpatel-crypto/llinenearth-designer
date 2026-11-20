@@ -239,6 +239,19 @@ async function regression(name, run) {
     const { page, context } = await freshPage(width);
     await page.screenshot({ path: path.join(output, "journey-" + width + ".png"), fullPage: true });
     await journey(page);
+    // Real built-Next comparison at all production viewport widths. No AI or stock calls.
+    const paidBeforeCompare = await count(page, "render");
+    await page.getByRole("button", { name: /Compare all looks before choosing/ }).click();
+    const comparison = page.locator("#director-compare-panel");
+    assert.equal(await comparison.locator(".directorCompareCard").count(), 3, "Compare all three engine directions");
+    const comparisonSize = await comparison.evaluate((node) => ({ scroll: node.scrollWidth, client: node.clientWidth }));
+    assert.ok(comparisonSize.scroll <= comparisonSize.client + 2, "Comparison must not horizontally overflow at " + width + "px");
+    await page.getByRole("button", { name: "Environment", exact: true }).click();
+    assert.ok((await comparison.locator(".directorCompareCardTop span").filter({ hasText: "#1" }).count()) >= 1, "At least one look leads; exact ties may share a rank");
+    await page.screenshot({ path: path.join(output, "comparison-" + width + ".png"), fullPage: true });
+    await page.getByRole("button", { name: /Hide look comparison/ }).click();
+    assert.equal(await comparison.isVisible(), false);
+    assert.equal(await count(page, "render"), paidBeforeCompare, "Comparison must not spend paid render credits");
     const initialFraming = await modelFraming(page);
     const initialCoverage = await fabricCoverage(page);
     fs.writeFileSync(path.join(output, "coverage-" + width + ".json"), JSON.stringify(initialCoverage, null, 2));
@@ -286,6 +299,19 @@ async function regression(name, run) {
     summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed", fidelityGateAndRetry: "passed", fabricCoverage: initialCoverage, protectedPixelsPreserved: true, framing: { initial: initialFraming, selected: selectedFraming, held: heldFraming, approved: approvedFraming } });
     await context.close();
   }
+  await regression("style-comparison-chooses-real-look-without-rewriting-its-recipe", async (page) => {
+    await journey(page);
+    const countBefore = await count(page, "render");
+    await page.getByRole("button", { name: /Compare all looks before choosing/ }).click();
+    const panel = page.locator("#director-compare-panel");
+    const last = panel.locator(".directorCompareCard").last();
+    const requestedName = await last.locator("h3").textContent();
+    await last.locator(".directorCompareChoose").click();
+    assert.equal(await panel.isVisible(), false);
+    assert.equal(await page.locator(".lookCopy h2").textContent(), requestedName);
+    assert.equal(await count(page, "render"), countBefore);
+    assert.equal((await page.locator(".lookTabs button.active").count()), 1);
+  });
   await regression("delayed-render-and-return-to-same-look", async (page) => {
     await journey(page);
     const old = await start(page);
