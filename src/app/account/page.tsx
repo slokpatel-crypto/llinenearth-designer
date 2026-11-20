@@ -54,17 +54,31 @@ export default function AccountPage(){
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
 
-  const refresh=useCallback(async()=>{
-    const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
-    const next=session.customer||null;
-    setCustomer(next);
-    if(!next){designLoadEpoch.current++;setActiveDesign(null);setShareUrl("");setEnquiryUrl("");setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});return;}
+  const clearPrivateAccount=useCallback(()=>{
+    designLoadEpoch.current++;
+    setActiveDesign(null);setShareUrl("");setEnquiryUrl("");
+    setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);
+    setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
+  },[]);
 
+  const refresh=useCallback(async()=>{
+    const epoch=++accountRefreshEpoch.current;
+    const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
+    if(epoch!==accountRefreshEpoch.current)return;
+    const next:Customer|null=session.customer||null;
+    const owner=next?String(next.id||"")+":"+String(next.email||""):null;
+    if(accountOwner.current!==owner){
+      accountOwner.current=owner;
+      clearPrivateAccount();
+    }
+    setCustomer(next);
+    if(!next)return;
     const [d,m,p]=await Promise.all([
       fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/customer-account/production",{cache:"no-store"}).then(r=>r.json()),
     ]);
+    if(epoch!==accountRefreshEpoch.current||accountOwner.current!==owner)return;
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
     setActiveDesign(current=>current&&Array.isArray(d.designs)&&d.designs.some((row:OwnedDesign)=>row.vaultId===current.vaultId)?current:null);
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
@@ -72,7 +86,7 @@ export default function AccountPage(){
     setOrders(Array.isArray(p.orders)?p.orders:[]);
     setOrderEvents(Array.isArray(p.orderEvents)?p.orderEvents:[]);
     setOutcomes(Array.isArray(p.outcomes)?p.outcomes:[]);
-  },[]);
+  },[clearPrivateAccount]);
 
   useEffect(()=>{void refresh();},[refresh]);
 
