@@ -66,7 +66,7 @@ async function run() {
       assert.deepEqual(summary.apiRequests, [], "photo selection must not send photo or call paid APIs");
       matchingOnly = false;
       await openOutfit.click();
-      await page.waitForURL(/\\/designer-studio\\?/);
+      await page.waitForURL((url) => url.pathname === "/designer-studio");
       await page.waitForFunction(([shirt, pant]) => {
         const a = document.querySelector("#designer-shirt");
         const b = document.querySelector("#designer-pant");
