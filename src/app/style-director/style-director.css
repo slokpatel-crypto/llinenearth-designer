@@ -98,3 +98,24 @@
 .directorFinishOptions button span{font-size:10px;line-height:1.5;color:#696259;overflow-wrap:anywhere}
 .directorFinishes .directorFinishSelected{border-left:2px solid #b58d4e;padding:9px 12px;background:#f7f0e7}
 @media(max-width:640px){.directorFinishes{padding:14px}.directorFinishIntro{flex-direction:column}.directorFinishControls{width:100%}.directorFinishOptions{grid-template-columns:minmax(0,1fr)}}
+
+/* Read-only, provisional occasion re-use signals; never physical approval. */
+.directorVersatility{margin:24px 0;padding:20px;background:#e8edea;border:1px solid rgba(11,26,42,.18)}
+.directorVersatilityIntro{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.directorVersatilityIntro span{display:block;font-size:9px;letter-spacing:.16em;color:#466956;font-weight:700}
+.directorVersatilityIntro h4{font:400 23px/1.2 Georgia,serif;margin:8px 0 0}
+.directorVersatilityIntro button{min-height:44px;background:#0b1a2a;border:1px solid #0b1a2a;color:#fff;padding:10px 16px;cursor:pointer;font-size:12px}
+.directorVersatilityIntro button:disabled{opacity:.65;cursor:wait}
+.directorVersatility>p{margin:12px 0 0;font-size:11px;line-height:1.55;color:#58675d}
+.directorVersatility .directorVersatilityError{color:#7b2828}
+.directorVersatilityGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:16px}
+.directorVersatilityCard{min-width:0;border:1px solid #b8c8be;background:#f6f8f4;padding:15px}
+.directorVersatilityCardTop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.directorVersatilityCardTop strong{font:400 18px Georgia,serif;color:#1e2b37}
+.directorVersatilityCardTop span{font-size:10px;color:#516d58;white-space:nowrap}
+.directorVersatilityCard p{font-size:11px;line-height:1.5;color:#5b665c;margin:9px 0 0;overflow-wrap:anywhere}
+.directorVersatilityCard p b{font:400 22px Georgia,serif;color:#192b24}
+.directorVersatilityCard p small{font-size:10px;color:#607267}
+.directorVersatilityCard .directorVersatilityReview{border-top:1px solid #d2dcd5;padding-top:8px}
+.directorVersatility .directorVersatilityDisclaimer{border-left:2px solid #748e79;padding:8px 12px;background:#f2f6f0}
+@media(max-width:640px){.directorVersatility{padding:14px}.directorVersatilityIntro{flex-direction:column}.directorVersatilityIntro button{width:100%}.directorVersatilityGrid{grid-template-columns:minmax(0,1fr)}}
