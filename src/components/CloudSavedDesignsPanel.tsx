@@ -1,0 +1,63 @@
+"use client";
+
+import { useState } from "react";
+import { getCloudDesign, listCloudDesigns, saveCloudDesign } from "@/lib/customer-saved-design-client";
+import type { SavedDesign } from "@/lib/saved-designs";
+
+/** Cloud records are deliberately separate from browser drafts: no implicit migration. */
+export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDesign[] }) {
+  const [cloud, setCloud] = useState<SavedDesign[]>([]);
+  const [selected, setSelected] = useState<SavedDesign | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  async function run(action: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true);
+    setMessage("");
+    try { await action(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Cloud unavailable."); }
+    finally { setBusy(false); }
+  }
+  return <section aria-label="Signed-in cloud designs" className="savedIntro">
+    <div>
+      <h2>Signed-in cloud designs</h2>
+      <p>Cloud saves require a signed-in account. Browser drafts stay on this device until you explicitly choose to upload one.</p>
+      <button disabled={busy} onClick={() => void run(async () => {
+        setCloud(await listCloudDesigns()); setSelected(null);
+      })}>Load my cloud designs</button>
+      {localDesigns.length > 0 && <div>
+        <label htmlFor="cloud-local-select">Choose a browser draft to upload</label>
+        <select id="cloud-local-select" defaultValue="" onChange={(event) => {
+          const id = event.currentTarget.value;
+          if (!id) return;
+          event.currentTarget.value = "";
+          void run(async () => {
+            const draft = localDesigns.find((item) => item.id === id);
+            if (!draft) throw new Error("Draft no longer available.");
+            await saveCloudDesign(draft);
+            setMessage("Cloud save confirmed.");
+          });
+        }} disabled={busy}>
+          <option value="">Select to upload explicitly</option>
+          {localDesigns.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select>
+      </div>}
+      {message && <p role="status">{message}</p>}
+    </div>
+    {cloud.length > 0 && <div>
+      <h3>Cloud records</h3>
+      <ul>{cloud.map((item) => <li key={item.id}>
+        <button disabled={busy} onClick={() => void run(async () => {
+          const recovered = await getCloudDesign(item.id);
+          if (!recovered) throw new Error("Cloud design no longer exists.");
+          setSelected(recovered);
+        })}>{item.title} — Recover details</button>
+      </li>)}</ul>
+      {selected && <div role="status">
+        <strong>{selected.title}</strong>
+        <p>Recovered cloud design {selected.id}. Version {selected.version.id}.</p>
+        <p>Cloud recovery does not overwrite browser drafts or claim production lock approval.</p>
+      </div>}
+    </div>}
+  </section>;
+}
