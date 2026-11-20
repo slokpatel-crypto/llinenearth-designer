@@ -63,9 +63,13 @@ def legacy_waist_reason_count(reasons: list[str], contacts: dict) -> int:
             continue
         matches = [
             reason for reason in reasons
-            if reason.startswith(f"{pair} has {count} intersecting triangle pairs; ")
+            if reason.startswith(f"{pair} has ")
         ]
-        if len(matches) != (1 if count > 0 else 0):
+        if len(matches) != (1 if count > 0 else 0) or (
+            count > 0 and not matches[0].startswith(
+                f"{pair} has {count} intersecting triangle pairs; "
+            )
+        ):
             raise RuntimeError(f"Unreviewed real garment crossing must block preflight: {pair}.")
         new_reasons += len(matches)
     return len(reasons) - new_reasons
