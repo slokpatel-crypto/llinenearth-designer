@@ -79,7 +79,7 @@ export function parseCustomerSavedDesignRow(value: unknown): {
     !Number.isFinite(Date.parse(value.updated_at)) ||
     !record(value.payload)) return null;
   const payload = parseCustomerSavedDesignWrite(
-    value.payload, Buffer.byteLength(JSON.stringify(value.payload), "utf8"));
+    value.payload, new TextEncoder().encode(JSON.stringify(value.payload)).length);
   if (!payload || (value.design_id !== undefined &&
     value.design_id !== payload.designId)) return null;
   return value as {payload: CustomerSavedDesignWrite; updated_at: string; design_id?: string};
