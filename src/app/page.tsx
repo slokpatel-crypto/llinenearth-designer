@@ -70,7 +70,7 @@ export default function Home() {
 
       <section className="gatewayIntro wrap" data-reveal>
         <div><p className="eyebrow">CHOOSE HOW YOU WANT TO DESIGN</p><h2>Two ways to find your look.</h2></div>
-        <p>Start with occasion and taste in Style Director, or start directly with real shirt and trouser cloth in the photographic Designer.</p>
+        <p>Start with occasion and taste in Style Director, or <Link href="/catalog">browse real shirt and trouser fabrics</Link> before opening the photographic Designer.</p>
       </section>
 
       <section className="gatewayChoices wrap" data-reveal>
