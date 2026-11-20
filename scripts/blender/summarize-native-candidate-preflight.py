@@ -82,6 +82,7 @@ def summarize(log: str, blender_exit_code: int) -> dict:
         "reasons": reasons,
         "identityFitMeasurementsMm": report.get("identityFitMeasurementsMm"),
         "boundaryIntersections": report.get("boundaryIntersections"),
+        "garmentPairIntersections": report.get("garmentPairIntersections"),
         "meshSummary": {
             name: {
                 "vertices": objects[name].get("vertices"),
