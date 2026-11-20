@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 AUTHOR_FILE = ROOT / "scripts/blender/author-linen-earth-officewear.py"
 PREFLIGHT_FILE = ROOT / "scripts/blender/preflight-linen-earth-officewear.py"
 PANELS = ("ShirtTorsoFabric", "ShirtSleeveLFabric", "ShirtSleeveRFabric")
+TROUSER_PANELS = ("TrouserWaistFabric", "TrouserLegLFabric", "TrouserLegRFabric")
 
 
 def load_module(name, path):
@@ -91,21 +92,21 @@ def source_faces(body, cx, zlow, z):
     return faces, source_sets
 
 
-def build_joint(body, faces):
+def build_joint(body, faces, panel_names=PANELS, research_tag="SHIRT"):
     used = sorted({int(v) for group in faces for poly in group for v in poly.vertices})
     remap = {old: new for new, old in enumerate(used)}
     vertices = [tuple(body.matrix_world @ body.data.vertices[i].co) for i in used]
     polygons = [tuple(remap[int(i)] for i in polygon.vertices) for group in faces for polygon in group]
     materials = [i for i, group in enumerate(faces) for polygon in group]
-    mesh = bpy.data.meshes.new("TITAN_RESEARCH_SEWN_ORIGINAL_CC0_SHIRT")
+    mesh = bpy.data.meshes.new("TITAN_RESEARCH_SEWN_ORIGINAL_CC0_"+research_tag)
     mesh.from_pydata(vertices, [], polygons)
     mesh.update(calc_edges=True)
-    obj = bpy.data.objects.new("TITAN_RESEARCH_SOURCE_SHIRT_JOINT", mesh)
+    obj = bpy.data.objects.new("TITAN_RESEARCH_SOURCE_"+research_tag+"_JOINT", mesh)
     obj.matrix_world.identity()
-    collection = bpy.data.collections.new("TITAN_ResearchSeamSingleSolidify")
+    collection = bpy.data.collections.new("TITAN_ResearchSeamSingleSolidify_"+research_tag)
     bpy.context.scene.collection.children.link(collection)
     collection.objects.link(obj)
-    for name in PANELS:
+    for name in panel_names:
         material = bpy.data.materials.get(name)
         if material is None:
             raise RuntimeError("Pinned six-panel source material not found: "+name)
@@ -118,14 +119,14 @@ def build_joint(body, faces):
     return obj, materials, collection
 
 
-def split_to_source_panel_objects(joint, original_materials, source_blend):
-    old_materials = {name: bpy.data.objects[name].data.materials[0] for name in PANELS}
+def split_to_source_panel_objects(joint, original_materials, source_blend, panel_names=PANELS):
+    old_materials = {name: bpy.data.objects[name].data.materials[0] for name in panel_names}
     vertices = [tuple(v.co) for v in joint.data.vertices]
     counts = {}
     collection = bpy.data.collections.get(author.EXPORT_COLLECTION)
     if collection is None:
         raise RuntimeError("Pinned export collection missing")
-    for material_index, name in enumerate(PANELS):
+    for material_index, name in enumerate(panel_names):
         faces = [tuple(int(i) for i in poly.vertices)
                  for poly in joint.data.polygons if poly.material_index == material_index]
         if len(faces) < len(original_materials[material_index]):
