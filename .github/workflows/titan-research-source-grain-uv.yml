@@ -108,6 +108,14 @@ jobs:
               assert panel["measuredRepeatVerified"] is False
               assert panel["seamChartApproved"] is False
               assert panel["horizontalFaces"]+panel["cylindricalFaces"]>0
+              before=panel["originalUvEdgeContinuity"]
+              after=panel["researchUvEdgeContinuity"]
+              assert before["sourceTopologicalEdges"]==after["sourceTopologicalEdges"]
+              assert before["sourceBoundaryEdges"]==after["sourceBoundaryEdges"]
+              assert before["sourceNonManifoldEdges"]==after["sourceNonManifoldEdges"]
+              assert before["sewnSeamApproval"] is False and after["sewnSeamApproval"] is False
+              assert type(after["uvDiscontinuityEdges"]) is int
+              assert after["uvDiscontinuityEdges"]>=0
           print("TITAN_REAL_CC0_UV_RESEARCH_GEOMETRY_ONLY_UNAPPROVED")
           PY
 
