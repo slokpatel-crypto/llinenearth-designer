@@ -298,3 +298,30 @@ test("wide-leg taper conflict remains independent of cropped-break construction"
     }
   }
 });
+
+
+test("correcting wide-leg fit and cropped break independently preserves saved selections", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const fit of ["slim_tapered", "relaxed"] as const) {
+      for (const shoeBreak of ["stacked_break", "no_break"] as const) {
+        const locked = makeSpec(sleeve, "wide_leg_relaxed_drape", "flat_front");
+        locked.pant.fit = fit;
+        locked.pant.hem = "cropped_above_ankle_hem";
+        locked.pant.break = shoeBreak;
+        const before = JSON.stringify(locked);
+        Object.freeze(locked.shirt);
+        Object.freeze(locked.pant);
+        Object.freeze(locked);
+        const first = styleDirectorConstructionIssues(locked);
+        const codes = first.map(issue => issue.code);
+        assert.equal(codes.includes("wide_leg_tapered_fit_mismatch"), fit === "slim_tapered");
+        assert.equal(codes.includes("cropped_stacked_break"), shoeBreak === "stacked_break");
+        if (sleeve === "retired_sleeve") {
+          assert.ok(codes.includes("unknown_versioned_option"));
+        }
+        assert.deepEqual(styleDirectorConstructionIssues(locked), first);
+        assert.equal(JSON.stringify(locked), before);
+      }
+    }
+  }
+});
