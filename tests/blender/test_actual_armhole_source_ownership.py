@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import math
+import statistics
 import sys
 from pathlib import Path
 
@@ -54,6 +55,94 @@ def physical_body_fingerprint(body):
     return hashlib.sha256(json.dumps([data, faces], separators=(",", ":")).encode()).hexdigest()
 
 
+
+def source_cut_edge_keys(mesh, polygon_ids):
+    """Edges used by one selected source face (not a sewn boundary claim)."""
+    incidence = {}
+    for face_id in polygon_ids:
+        polygon = mesh.polygons[face_id]
+        vertices = tuple(int(i) for i in polygon.vertices)
+        if len(vertices) < 3:
+            raise RuntimeError("Selected CC0 source polygon has fewer than three vertices")
+        for index, first in enumerate(vertices):
+            second = vertices[(index + 1) % len(vertices)]
+            if first == second:
+                raise RuntimeError("Degenerate cut-edge topology in original source")
+            key = tuple(sorted((first, second)))
+            incidence[key] = incidence.get(key, 0) + 1
+    if any(count > 2 for count in incidence.values()):
+        raise RuntimeError("Nonmanifold original CC0 source face selection")
+    return {key for key, count in incidence.items() if count == 1}
+
+
+def actual_armhole_edge_metrics(body, torso_faces, sleeve_faces, side, cx, zmin, height):
+    """Original topology + measured source edge separation at sleeve/torso cut.
+
+    This is BEFORE shrinkwrap/solidify. A zero source edge distance never
+    proves the evaluated garment cloth has a watertight sewn seam.
+    """
+    if side not in ("L", "R"):
+        raise RuntimeError("Invalid real armhole side")
+    mesh = body.data
+    torso_edges = source_cut_edge_keys(mesh, torso_faces)
+    sleeve_edges = source_cut_edge_keys(mesh, sleeve_faces)
+    world_points = {
+        vertex.index: body.matrix_world @ vertex.co for vertex in mesh.vertices
+    }
+    for point in world_points.values():
+        if not all(math.isfinite(float(axis)) for axis in point):
+            raise RuntimeError("Nonfinite original source vertex")
+
+    cut_z_low = zmin + 0.500 * height
+    cut_z_high = zmin + 0.875 * height
+    # The source selectors cut at |x| = 245mm. The search window is derived
+    # from their original 90mm duplicated band (245mm - 155mm), not an
+    # invented tailor seam allowance or fabric measurement.
+    near_x = 0.245
+    half_window = 0.090
+    def select_interface_edges(edges):
+        result = {}
+        for edge in edges:
+            mid = (world_points[edge[0]] + world_points[edge[1]]) * 0.5
+            lateral = mid.x - cx
+            side_ok = lateral < 0 if side == "L" else lateral > 0
+            if (side_ok and cut_z_low <= mid.z <= cut_z_high
+                    and abs(abs(lateral) - near_x) <= half_window):
+                result[edge] = mid
+        return result
+
+    torso_near = select_interface_edges(torso_edges)
+    sleeve_near = select_interface_edges(sleeve_edges)
+    if not torso_near or not sleeve_near:
+        raise RuntimeError("No true source cut edges in original armhole search band")
+
+    all_nearest = []
+    for point in torso_near.values():
+        distance = min((point - other).length for other in sleeve_near.values())
+        if not math.isfinite(distance):
+            raise RuntimeError("Invalid original armhole edge proximity")
+        all_nearest.append(distance * 1000.0)
+    all_nearest.sort()
+    p90 = all_nearest[max(0, math.ceil(0.9 * len(all_nearest)) - 1)]
+    shared = torso_near.keys() & sleeve_near.keys()
+    return {
+        "sourceTorsoCutEdges": len(torso_edges),
+        "sourceSleeveCutEdges": len(sleeve_edges),
+        "nearInterfaceTorsoEdges": len(torso_near),
+        "nearInterfaceSleeveEdges": len(sleeve_near),
+        "identicalSourceInterfaceEdges": len(shared),
+        "torsoToNearestSleeveCutMidpointMm": {
+            "min": round(all_nearest[0], 3),
+            "median": round(statistics.median(all_nearest), 3),
+            "p90": round(p90, 3),
+            "max": round(all_nearest[-1], 3),
+        },
+        "torsoCutMidpointsWithin5mm": sum(v <= 5 for v in all_nearest),
+        "sewnSeamApproved": False,
+        "clothGapClosedVerified": False,
+        "seamMetricScope": "original body-source cut edges before modifiers; not a cloth fit result",
+    }
+
 def report(expect):
     scene = bpy.context.scene
     if (scene.get("linen_earth_model_identity_id") != "linen-earth-studio-model-v1"
@@ -96,6 +185,11 @@ def report(expect):
     if not all(len(v) >= 4 for v in (torso_faces, left_faces, right_faces)):
         raise RuntimeError("Experiment left one of the actual garments empty")
 
+    armhole_edges = {
+        "L": actual_armhole_edge_metrics(body, torso_faces, left_faces, "L", cx, zmin, height),
+        "R": actual_armhole_edge_metrics(body, torso_faces, right_faces, "R", cx, zmin, height),
+    }
+
     contact = {}
     for left, right in [
         ("ShirtTorsoFabric", "ShirtSleeveLFabric"),
@@ -128,6 +222,7 @@ def report(expect):
             "duplicatedOriginalTorsoSleeveFacesR": torso_overlap_right,
         },
         "garmentContactPairs": contact,
+        "originalSourceArmholeCutEdges": armhole_edges,
         "experimentalDisjointArmholes": is_trial,
         "caveat": "Actual world BVH contacts and selected source face ownership, not sewn armhole fit",
     }
@@ -145,6 +240,7 @@ def main():
         "sourceBodySha256": data["sourceBodySha256"],
         "faceOwnership": data["sourceFaceSelection"],
         "realBVH": data["garmentContactPairs"],
+        "originalSourceArmholeCutEdges": data["originalSourceArmholeCutEdges"],
         "experimental": data["experimentalDisjointArmholes"],
     }))
 
