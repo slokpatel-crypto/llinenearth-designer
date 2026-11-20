@@ -62,10 +62,12 @@ jobs:
           before="$(sha256sum "$body" | cut -d' ' -f1)"
           "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
             --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-capture-armhole-stages \
             --output .cache/linen-earth/titan-original-armhole-control.blend
           "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
             --python scripts/blender/author-linen-earth-officewear.py -- \
             --experimental-disjoint-armholes \
+            --experimental-capture-armhole-stages \
             --output .cache/linen-earth/titan-disjoint-armhole-research.blend
           after="$(sha256sum "$body" | cut -d' ' -f1)"
           test "$before" = "$after"
@@ -110,6 +112,23 @@ jobs:
                   assert summary["min"]<=summary["p90"]<=summary["max"]
                   assert 0<=values["torsoCutMidpointsWithin5mm"]<=values["nearInterfaceTorsoEdges"]
               print("ORIGINAL_CC0_ARMHOLE_CUT_EDGE_SEPARATION_MM",side,baseline_edges,trial_edges)
+              initial=base["actualArmholeModifierSeamDisplacement"][side]
+              candidate=trial["actualArmholeModifierSeamDisplacement"][side]
+              assert initial["sharedOriginalSeamEdges"]==0
+              assert initial["sharedOriginalSeamVertices"]==0
+              assert not initial["preSolidifySourceVertexDisplacementMm"]
+              assert candidate["sharedOriginalSeamEdges"]>=trial_edges["identicalSourceInterfaceEdges"]
+              assert candidate["sharedOriginalSeamVertices"]>0
+              assert not candidate["postSolidifySeamSewnVerified"]
+              assert not candidate["postSolidifySeamWatertightVerified"]
+              stages=candidate["preSolidifySourceVertexDisplacementMm"]
+              assert set(stages)=={"selectedBodyShell","afterSmoothing","afterBodyClearance"}
+              assert stages["selectedBodyShell"]["max"]<=0.001
+              for name, values in stages.items():
+                  assert 0<=values["min"]<=values["median"]<=values["max"]
+                  assert values["min"]<=values["p90"]<=values["max"]
+                  assert values["matchedOriginalVertexCount"]==candidate["sharedOriginalSeamVertices"]
+                  print("REAL_CC0_SOURCE_EDGE_VERTEX_MODIFIER_SEPARATION",side,name,values)
           for pair in base["garmentContactPairs"]:
               before=base["garmentContactPairs"][pair]
               after=trial["garmentContactPairs"][pair]
