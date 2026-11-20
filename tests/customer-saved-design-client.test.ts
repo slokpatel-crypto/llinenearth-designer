@@ -27,6 +27,8 @@ test("explicit cloud save carries recipe but never a caller-supplied owner", asy
 test("cloud list restores validated versioned recipe without reading browser storage", async () => {
   const designs = await listCloudDesigns(async () => response({designs: [row]}));
   assert.deepEqual(designs, [saved]);
+  await assert.rejects(() => listCloudDesigns(async () => response({designs: [row, row]})), /Invalid cloud/);
+  assert.deepEqual(await listCloudDesigns(async () => response({designs: [row]})), [saved]);
   await assert.rejects(() => listCloudDesigns(async () =>
     response({designs: [{...row, owner_id: "private"}]})), /Invalid cloud/);
 });
