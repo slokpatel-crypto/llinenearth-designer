@@ -38,8 +38,13 @@ def fixture(name, source_faces, stage, x_shift):
         point = body_mesh.vertices[i].co.copy()
         point.x += x_shift
         verts.append(point)
+    remap = {original: local for local, original in enumerate(indices)}
+    faces = [
+        tuple(remap[i] for i in body_mesh.polygons[face_id].vertices)
+        for face_id in source_faces
+    ]
     mesh = bpy.data.meshes.new("TEST_" + stage + name)
-    mesh.from_pydata(verts, [], [])
+    mesh.from_pydata(verts, [], faces)
     mesh.update(calc_edges=True)
     obj = bpy.data.objects.new("TITAN_ARMHOLE_RESEARCH_" + stage + "_" + name, mesh)
     obj["sourceStage"] = stage
@@ -66,6 +71,10 @@ assert set(stages) == {"selectedBodyShell", "afterSmoothing", "afterBodyClearanc
 assert stages["selectedBodyShell"]["max"] == 0, stages
 assert abs(stages["afterSmoothing"]["median"] - 2.0) < 0.001, stages
 assert abs(stages["afterBodyClearance"]["median"] - 3.0) < 0.001, stages
+assert set(metric["realWorldBVHTrianglePairContactsByStage"]) == {
+    "selectedBodyShell", "afterSmoothing", "afterBodyClearance", "afterClothThickness"
+}
+assert all(type(x) is int and x >= 0 for x in metric["realWorldBVHTrianglePairContactsByStage"].values())
 assert metric["postSolidifySeamSewnVerified"] is False
 assert metric["postSolidifySeamWatertightVerified"] is False
 
