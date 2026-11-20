@@ -6,7 +6,7 @@ import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/des
 import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/customer-production-outcomes";
 
 type Customer={id?:string;email:string|null};
-type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;parentRevisionId?:string|null;createdAt:string;expiresAt:string};
+type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;parentRevisionId?:string|null;summary?:{shirtName:string;trouserName:string;occasion:string};createdAt:string;expiresAt:string};
 type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string};
 type OwnedQuote={quote_id:string;revision_id:string;currency:string;line_items:Array<{label:string;amount:number|string}>;subtotal:number|string;adjustment:number|string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
@@ -334,6 +334,10 @@ export default function AccountPage(){
                 <div><strong>{item.revisionId}</strong><div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · integrity hash {item.recipeHash.slice(0,12)}…</div>{item.parentRevisionId&&<div style={{fontSize:13,opacity:.7,marginTop:4,overflowWrap:"anywhere"}}>Continues recorded revision {item.parentRevisionId}</div>}</div>
                 <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1",padding:"7px 10px"}} disabled={busy} onClick={()=>void deleteOwned("design",item.vaultId)}>Delete secure copy</button>
               </div>
+              {item.summary&&<div style={{display:"grid",gap:3,fontSize:14,lineHeight:1.45,overflowWrap:"anywhere"}}>
+                <strong>Shirt: {item.summary.shirtName} · Trouser: {item.summary.trouserName}</strong>
+                <span style={{fontSize:12,opacity:.7}}>Saved occasion: {item.summary.occasion} · Fabric labels from the locked recipe; verify current availability before ordering.</span>
+              </div>}
               <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
                 <Link href={`/designer-studio?resumeVault=${encodeURIComponent(item.vaultId)}`} style={{...button,textDecoration:"none"}}>Continue in Designer</Link>
                 <button style={{...button,background:"#f1ede4",color:"#252525"}} type="button" disabled={busy} onClick={()=>void actOnOwnedDesign("share",item)}>
