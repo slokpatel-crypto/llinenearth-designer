@@ -131,3 +131,28 @@ test("independent trouser construction conflicts accumulate without repairing fr
     }
   }
 });
+
+
+test("multiple stale shirt options cannot suppress simultaneous independent trouser faults", () => {
+  for (const pantType of ["formal_flat_front", "pleated_trouser"] as const) {
+    const pleat = pantType === "formal_flat_front" ? "double_pleat_reverse" : "flat_front";
+    const expectedFront = pantType === "formal_flat_front"
+      ? "flat_front_has_pleat" : "pleated_front_missing_pleat";
+    const spec = makeSpec("retired_sleeve", pantType, pleat);
+    spec.shirt.collar = "retired_collar";
+    spec.shirt.cuff = "retired_cuff";
+    spec.pant.hem = "cropped_above_ankle_hem";
+    spec.pant.break = "stacked_break";
+    const original = JSON.stringify(spec);
+    Object.freeze(spec.shirt);
+    Object.freeze(spec.pant);
+    Object.freeze(spec);
+    const first = styleDirectorConstructionIssues(spec);
+    const codes = first.map(issue => issue.code);
+    for (const code of ["unknown_versioned_option", expectedFront, "cropped_stacked_break"]) {
+      assert.ok(codes.includes(code), `${pantType}: missing ${code}`);
+    }
+    assert.deepEqual(styleDirectorConstructionIssues(spec), first);
+    assert.equal(JSON.stringify(spec), original, "frozen saved garment must remain untouched");
+  }
+});
