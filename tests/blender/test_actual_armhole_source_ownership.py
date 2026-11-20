@@ -143,6 +143,87 @@ def actual_armhole_edge_metrics(body, torso_faces, sleeve_faces, side, cx, zmin,
         "seamMetricScope": "original body-source cut edges before modifiers; not a cloth fit result",
     }
 
+
+def actual_shared_seam_modifier_displacement(body, torso_faces, sleeve_faces, sleeve_name):
+    """Match ORIGINAL source seam vertex IDs after actual per-panel modifiers.
+
+    Selected body-shell / smoothing / shrinkwrap preserve the ordered source
+    vertex mapping. Solidify may change topology; this deliberately does NOT
+    infer a sewn seam from post-thickness output.
+    """
+    collection = bpy.data.collections.get("TITAN_ArmholeStageResearch")
+    if collection is None:
+        raise RuntimeError("Real armhole modifier-stage source evidence missing")
+    torso_edges = source_cut_edge_keys(body.data, torso_faces)
+    sleeve_edges = source_cut_edge_keys(body.data, sleeve_faces)
+    shared = torso_edges & sleeve_edges
+    stages = (
+        "selectedBodyShell", "afterSmoothing", "afterBodyClearance", "afterClothThickness"
+    )
+    source_vertex_order = {}
+    for name, faces in (("ShirtTorsoFabric", torso_faces), (sleeve_name, sleeve_faces)):
+        source_vertex_order[name] = {
+            original: index for index, original in enumerate(sorted({
+                int(vertex) for face in faces
+                for vertex in body.data.polygons[face].vertices
+            }))
+        }
+    paired_vertices = sorted({vertex for edge in shared for vertex in edge})
+    displacement_by_stage = {}
+    for stage in stages:
+        clones = {}
+        for name in ("ShirtTorsoFabric", sleeve_name):
+            clone_name = f"TITAN_ARMHOLE_RESEARCH_{stage}_{name}"
+            clone = collection.objects.get(clone_name)
+            if (clone is None or clone.type != "MESH"
+                or clone.get("sourceStage") != stage
+                or clone.get("candidateOnly") is not True
+                or clone.get("productionApproved") is not False):
+                raise RuntimeError(f"Actual native modifier stage is absent/untrusted: {clone_name}")
+            if stage != "afterClothThickness" and (
+                len(clone.data.vertices) != len(source_vertex_order[name])
+            ):
+                raise RuntimeError("Unexpected torso/sleeve vertex-order change before solidify")
+            clones[name] = clone
+        if stage == "afterClothThickness":
+            # Solidify clones are archived for visual inspection, but source
+            # vertex IDs no longer certify a correspondence across rim faces.
+            continue
+        values = []
+        for source_vertex in paired_vertices:
+            one, other = clones["ShirtTorsoFabric"], clones[sleeve_name]
+            v1 = one.matrix_world @ one.data.vertices[
+                source_vertex_order["ShirtTorsoFabric"][source_vertex]
+            ].co
+            v2 = other.matrix_world @ other.data.vertices[
+                source_vertex_order[sleeve_name][source_vertex]
+            ].co
+            mm = (v1-v2).length * 1000.0
+            if not math.isfinite(mm):
+                raise RuntimeError("Unmeasured real seam vertex displacement")
+            values.append(mm)
+        if values:
+            values.sort()
+            displacement_by_stage[stage] = {
+                "min": round(values[0], 3),
+                "median": round(statistics.median(values), 3),
+                "p90": round(values[max(0, math.ceil(0.9*len(values))-1)], 3),
+                "max": round(values[-1], 3),
+                "matchedOriginalVertexCount": len(values),
+            }
+    if shared and not displacement_by_stage:
+        raise RuntimeError("Shared source seam has no actual Blender stage distances")
+    if shared and displacement_by_stage["selectedBodyShell"]["max"] > 0.001:
+        raise RuntimeError("Original shared source seam was already separated before modifiers")
+    return {
+        "sharedOriginalSeamEdges": len(shared),
+        "sharedOriginalSeamVertices": len(paired_vertices),
+        "preSolidifySourceVertexDisplacementMm": displacement_by_stage,
+        "postSolidifySeamSewnVerified": False,
+        "postSolidifySeamWatertightVerified": False,
+        "method": "actual original-source vertex-index mapping; independent torso/sleeve Blender snapshots",
+    }
+
 def report(expect):
     scene = bpy.context.scene
     if (scene.get("linen_earth_model_identity_id") != "linen-earth-studio-model-v1"
@@ -152,6 +233,8 @@ def report(expect):
     is_trial = scene.get("linen_earth_research_disjoint_armholes") is True
     if is_trial != (expect == "disjoint"):
         raise RuntimeError("Experimental source ownership flag does not match actual scene")
+    if scene.get("linen_earth_research_armhole_stages_emitted") is not True:
+        raise RuntimeError("Actual armhole modifier snapshots were not enabled")
     body = bpy.data.objects.get("Body")
     if body is None or body.type != "MESH" or len(body.data.polygons) <= 0:
         raise RuntimeError("Actual pinned source body geometry missing")
@@ -190,6 +273,15 @@ def report(expect):
         "R": actual_armhole_edge_metrics(body, torso_faces, right_faces, "R", cx, zmin, height),
     }
 
+    stage_displacement = {
+        "L": actual_shared_seam_modifier_displacement(
+            body, torso_faces, left_faces, "ShirtSleeveLFabric"
+        ),
+        "R": actual_shared_seam_modifier_displacement(
+            body, torso_faces, right_faces, "ShirtSleeveRFabric"
+        ),
+    }
+
     contact = {}
     for left, right in [
         ("ShirtTorsoFabric", "ShirtSleeveLFabric"),
@@ -223,6 +315,7 @@ def report(expect):
         },
         "garmentContactPairs": contact,
         "originalSourceArmholeCutEdges": armhole_edges,
+        "actualArmholeModifierSeamDisplacement": stage_displacement,
         "experimentalDisjointArmholes": is_trial,
         "caveat": "Actual world BVH contacts and selected source face ownership, not sewn armhole fit",
     }
@@ -241,6 +334,7 @@ def main():
         "faceOwnership": data["sourceFaceSelection"],
         "realBVH": data["garmentContactPairs"],
         "originalSourceArmholeCutEdges": data["originalSourceArmholeCutEdges"],
+        "actualArmholeModifierSeamDisplacement": data["actualArmholeModifierSeamDisplacement"],
         "experimental": data["experimentalDisjointArmholes"],
     }))
 
