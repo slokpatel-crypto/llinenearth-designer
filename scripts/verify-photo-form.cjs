@@ -706,7 +706,60 @@ async function run(){
     await page.getByRole("button",{name:"Full view",exact:true}).click();
     assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-focus"),"full");
     summary.viewports[summary.viewports.length-1].detailInspectionFocusVerified=true;
+    // A before/after WIPE shows the same fixed photograph and current fabric
+    // selection. Only the display is clipped; the selected canvas remains
+    // unaltered and keeps its existing Save/locking semantics.
+    const splitButton=page.getByRole("button",{name:"Split compare",exact:true});
+    assert.equal(await splitButton.isEnabled(),true);
+    const splitButtonBox=await splitButton.boundingBox();
+    assert.ok(splitButtonBox && splitButtonBox.width>=44 && splitButtonBox.height>=44,
+      "split comparison needs a 44px touch target even on mobile");
+    const selectedBeforeSplit=await actualPhotoPixelHash(page);
+    await splitButton.click();
+    assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-split"),"true");
+    assert.equal(await page.locator(".newDesignerPhotoSplitOriginal").count(),1);
+    assert.equal(new URL(await page.locator(".newDesignerPhotoSplitOriginal").getAttribute("src"),base).pathname,
+      "/designer/studio-wide.webp","wide compare must show the actual original wide-trouser source photograph");
+    const splitSlider=page.getByRole("slider",{name:"Original photograph coverage"});
+    assert.equal(await splitSlider.inputValue(),"50");
+    assert.match(await page.locator("[data-photo-split-provenance]").textContent(),/Left: original studio photograph/);
+    assert.match(await page.locator("[data-photo-split-provenance]").textContent(),/wide-trouser source photo uses a different photographed shirt/);
+    assert.equal(await actualPhotoPixelHash(page),selectedBeforeSplit,
+      "split comparison must never overwrite the customer's selected canvas");
+    await splitSlider.focus();
+    await splitSlider.press("Home");
+    assert.equal(await splitSlider.inputValue(),"0");
+    assert.match(await page.locator(".newDesignerPhotoSplitSource").evaluate(node=>getComputedStyle(node).clipPath),/100%/,
+      "zero original coverage must reveal only the selected fabric");
+    await splitSlider.press("End");
+    assert.equal(await splitSlider.inputValue(),"100");
+    assert.match(await page.locator(".newDesignerPhotoSplitSource").evaluate(node=>getComputedStyle(node).clipPath),/inset\\(0px 0%/,
+      "full original coverage must expose the complete unedited source");
+    await splitSlider.press("Home");
+    for(let i=0;i<50;i++)await splitSlider.press("ArrowRight");
+    assert.equal(await splitSlider.inputValue(),"50");
+    await page.getByRole("button",{name:"Collar",exact:true}).click();
+    await page.waitForTimeout(360);
+    const splitTransforms=await page.locator(".newDesignerPhotoStage").evaluate(stage=>{
+      const original=stage.querySelector(".newDesignerPhotoSplitOriginal"),selected=stage.querySelector("canvas");
+      const a=getComputedStyle(original),b=getComputedStyle(selected);
+      return {original:a.transform,selected:b.transform,originA:a.transformOrigin,originB:b.transformOrigin};
+    });
+    assert.notEqual(splitTransforms.original,"none");
+    assert.equal(splitTransforms.original,splitTransforms.selected,
+      "the split source and selected garment must zoom together");
+    assert.equal(splitTransforms.originA,splitTransforms.originB,
+      "the split source and selected garment must share a transform origin");
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,
+      "split comparison and slider must not create mobile overflow");
+    await page.getByRole("button",{name:"Full view",exact:true}).click();
+    await page.locator(".newDesignerPhotoStage").screenshot({path:path.join(out,`split-before-after-${width}.png`)});
     await page.getByRole("button",{name:"Compare",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerPhotoSplitSource").count(),0,
+      "full source Compare must clear the split overlay");
+    assert.equal(await page.getByRole("button",{name:"Split compare",exact:true}).isDisabled(),true,
+      "source Compare must not offer a second conflicting source overlay");
+    summary.viewports[summary.viewports.length-1].sourceSplitInteractionVerified=true;
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
       "source Compare must never inherit selected-preview garment boundary geometry");
     assert.equal(await page.getByRole("button",{name:"Hide boundaries",exact:true}).isDisabled(),true);

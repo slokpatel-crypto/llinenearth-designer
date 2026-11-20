@@ -5,6 +5,7 @@ import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { photoConstructionMismatches, photoPatternPanelPlacementDisclosure, photoPatternScaleDisclosure } from "@/lib/designer/photo-preview-fidelity";
 import { photoFabricCaptionSafeCrop } from "@/lib/designer/photo-fabric-caption-crop";
+import { photoSourceSplitClip } from "@/lib/designer/photo-source-split";
 import { PHOTO_INSPECTION_FOCUS, PHOTO_INSPECTION_TARGETS, type PhotoInspectionFocus } from "@/lib/designer/photo-inspection-focus";
 import type { CSSProperties } from "react";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
@@ -1290,6 +1291,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const [photoFocus, setPhotoFocus] = useState<PhotoInspectionFocus>("full");
   const [showOriginal, setShowOriginal] = useState(false);
   const [showBoundaries, setShowBoundaries] = useState(false);
+  const [splitCompare,setSplitCompare]=useState(false);
+  const [splitPercent,setSplitPercent]=useState(50);
   const [creativeAi, setCreativeAi] = useState<PhotorealResult|null>(null);
   const [creativeAiLoading, setCreativeAiLoading] = useState(false);
   const [creativeAiError, setCreativeAiError] = useState("");
@@ -1394,6 +1397,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     setShowBoundaries(false);
     // A source comparison from the previous selection must not mask the next look.
     setShowOriginal(false);
+    setSplitCompare(false);
+    setSplitPercent(50);
     setCreativeAi(null);
     setCreativeAiLoading(false);
     setCreativeAiError("");
@@ -1815,12 +1820,25 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
     </div>}
     {!showOriginal && !showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px",lineHeight:1.6,margin:"10px 20px 12px",padding:"12px 14px",background:"#faf6f0",borderLeft:"3px solid #a65d43",color:"#514538",overflowWrap:"anywhere"}} data-photo-caption="instant" data-photo-pattern-placement={panelPlacementVerified?"verified":"unverified"} data-photo-scale-trust={patternedPlacementItems.length===0?"no-visible-repeat":previewScaleVerified?"verified":"approximate"}><strong>Instant preview</strong> · Studio model; {photoPatternTruthNotice}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
-    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-photo-focus={photoFocus} style={photoInspectionStyle} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
+    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-photo-focus={photoFocus} data-photo-split={splitCompare&&ready&&!showOriginal&&!showCreativeAi?"true":"false"} style={photoInspectionStyle} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-hidden={!ready || showOriginal || showCreativeAi} aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} style={{visibility:ready?"visible":"hidden"}} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
       {showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
         ? "Original wide-trouser studio photograph. The instant-preview shirt uses the separate pleated studio source photograph."
         : "Original photographed studio model template for comparison"} />}
+      {splitCompare && ready && !showOriginal && !showCreativeAi && <>
+        <div className="newDesignerPhotoSplitSource" data-photo-split-clip={splitPercent} style={{clipPath:photoSourceSplitClip(splitPercent)}} aria-hidden="true">
+          <img className="newDesignerPhotoSplitOriginal" src={template.src} alt="" />
+        </div>
+        <div className="newDesignerPhotoSplitDivider" style={{left:`${splitPercent}%`}} aria-hidden="true" />
+        <div className="newDesignerPhotoSplitControls" role="group" aria-label="Compare original studio source and selected fabrics">
+          <div className="newDesignerPhotoSplitLabels"><span>Original source</span><span>Selected look</span></div>
+          <input type="range" min={0} max={100} step={1} value={splitPercent}
+            onChange={event=>setSplitPercent(Math.max(0,Math.min(100,Number(event.currentTarget.value))))}
+            aria-label="Original photograph coverage"
+            aria-valuetext={`${splitPercent}% of original source photo visible`} />
+        </div>
+      </>}
       {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay" style={{transform:inspectFit?`scale(${photoInspection.scale})`:"scale(1)",transformOrigin:`${photoInspection.originX}% ${photoInspection.originY}%`,transition:"transform .28s ease"}}>
         {tucked ? <>
           <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
@@ -1838,6 +1856,11 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
+    {splitCompare && ready && !showOriginal && !showCreativeAi && <p className="newDesignerPhotoSplitNote" data-photo-split-provenance="source" role="status">
+      <strong>Left: original studio photograph</strong> · Right: your selected fabrics. This wipe changes only the on-screen comparison; Save exports the selected design, not the split.
+      {templateId==="wide" && " The wide-trouser source photo uses a different photographed shirt from the selected-look compositor."}
+      Physical fit, construction and colour still require validation.
+    </p>}
     <div className="newDesignerPhotoSummary newDesignerPhotoSummaryCompact">
       <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"}</b></span><strong title={shirt.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{shirt.name}</b></strong></div>
       <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"}</b></span><strong title={pant.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{pant.name}</b></strong></div>
@@ -1845,9 +1868,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>Lock final design</b></button>}
         {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</b></button>}
         {!creativeAi && creativeDirection && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}><b style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</b></button>}
-        {creativeAi && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}><b style={PHOTO_ACTION_LABEL_STYLE}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</b></button>}
+        {creativeAi && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setShowOriginal(false);setSplitCompare(false);setShowCreativeAi((value)=>!value);}}><b style={PHOTO_ACTION_LABEL_STYLE}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</b></button>}
         {!creativeAi && !creativeDirection && finalLocked && <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}><b style={PHOTO_ACTION_LABEL_STYLE}>Unlock</b></button>}
-        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</b></button>
+        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={() => {setSplitCompare(false);setSplitPercent(50);setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</b></button>
+        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} aria-pressed={splitCompare&&!showOriginal&&!showCreativeAi} onClick={()=>{setShowOriginal(false);setSplitPercent(50);setSplitCompare(value=>!value);}} disabled={!ready||showOriginal||showCreativeAi}><b style={PHOTO_ACTION_LABEL_STYLE}>{splitCompare ? "Close split" : "Split compare"}</b></button>
         <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={download} disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</b></button>
       </div>
     </div>
