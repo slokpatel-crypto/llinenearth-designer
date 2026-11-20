@@ -573,3 +573,12 @@ Architecture and product decisions that must persist across coding sessions.
 - A new editable draft never proves old physical fabric facts, stock, creative treatments, measurements or tailor release. Account inspection preserves the full original locked spec; product copy requires fresh assessment/review before a new lock.
 - No new migration needed. Existing locked-recipe and recovery-token contracts retain their current shape; old recipes remain loadable, shareable and exportable even when they cannot be safely projected into the current Designer. Browser draft localStorage remains a convenience only, never secure ownership.
 - Browser QA at 390 / 768 / 1440 and exact-head independent checks remain merge gates; no physical evidence is inferred from synthetic CI.
+
+
+### 2026-11-20 — Reject unapproved UV research scenes before production GLB export
+The Blender exporter now rejects known explicit experimental scene markers,
+research-tagged six-panel cloth meshes and the named TITAN_SurfaceGrain_RESEARCH
+UV layer even when the visible scene status is cleared. This is a separate
+quarantine before the unchanged true body/garment physical preflight; no new
+operator approval attribute, substitute model, customer data or image is
+introduced. The experimental UV candidate remains draft/unmerged.

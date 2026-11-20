@@ -11,11 +11,18 @@ test("measured GLB viewer sidecars cannot survive an unmeasured overwrite",()=>{
     assert.ok(source.includes(token),token);
   const main=source.slice(source.indexOf("def main():"));
   const guard=main.indexOf("validate_export_destination(args.output, args.panel_spec)");
+  const quarantine=main.indexOf("reject_research_scene_for_export(bpy.context.scene)");
   const preflight=main.indexOf("run_scene_preflight()");
   const exportCall=main.indexOf("export_glb(collection, args.output)");
-  assert.ok(guard>=0&&preflight>guard&&exportCall>preflight,
+  assert.ok(guard>=0&&quarantine>guard&&preflight>quarantine&&exportCall>preflight,
     "destination evidence mismatch must be blocked before any export");
+  assert.match(source,/def reject_research_scene_for_export\(scene\):/);
+  assert.match(source,/status\.startswith\("research-"\)/);
+  assert.match(source,/titan_surface_uv_research_candidate_only/);
+  assert.match(source,/titan_surface_uv_production_approved/);
+  assert.match(source,/obj\.data\.uv_layers\.get\(RESEARCH_SURFACE_UV_LAYER\)/);
   const native=readFileSync("tests/blender/test_export_sidecar_preservation.py","utf8");
+  assert.match(native,/TITAN_NATIVE_RESEARCH_UV_EXPORT_QUARANTINE_PASSED/);
   for(const token of ["glb.read_bytes()", "sidecar.read_text", "export.validate_export_destination", "different-candidate.glb", "simulated manifest serialization failure", ".linen-earth-viewer-*.tmp"])
     assert.ok(native.includes(token),token);
 });
