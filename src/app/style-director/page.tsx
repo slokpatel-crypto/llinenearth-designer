@@ -14,6 +14,7 @@ import {
   compareStyleDirectorLooks, STYLE_DIRECTOR_COMPARE_LENSES, type StyleDirectorCompareLens,
 } from "@/lib/designer/style-director-compare";
 import type { StyleDirectorPairingAlternative } from "@/lib/designer/style-director-pairings";
+import { StyleDirectorFinishes, type StyleDirectorClientFinish } from "@/components/StyleDirectorFinishes";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -63,6 +64,7 @@ export default function StyleDirectorPage() {
   const [pairings,setPairings] = useState<StyleDirectorClientAlternative[]|null>(null);
   const [pairingsLoading,setPairingsLoading] = useState(false);
   const [chosenPairing,setChosenPairing] = useState<StyleDirectorClientAlternative|null>(null);
+  const [chosenFinish,setChosenFinish] = useState<StyleDirectorClientFinish|null>(null);
   const [pairingsError,setPairingsError] = useState("");
   const [loading,setLoading] = useState(false);
   const [rendering,setRendering] = useState(false);
@@ -77,11 +79,17 @@ export default function StyleDirectorPage() {
   const step = steps[index];
   const complete = looks.length > 0;
   const originalLook = looks[selected];
-  const selectedLook = useMemo<StyleDirectorClientLook|undefined>(()=>originalLook
+  const pairingLook = useMemo<StyleDirectorClientLook|undefined>(()=>originalLook
     ? chosenPairing && chosenPairing.id.startsWith(originalLook.id+":") && chosenPairing.realModel
       ? {...originalLook, realModel:chosenPairing.realModel,handoffToken:chosenPairing.handoffToken}
       : originalLook
     : undefined,[originalLook,chosenPairing]);
+  const selectedLook = useMemo<StyleDirectorClientLook|undefined>(()=>pairingLook
+    ? chosenFinish && pairingLook.realModel && chosenFinish.baseShirtId===pairingLook.realModel.shirtId
+      && chosenFinish.basePantId===pairingLook.realModel.pantId
+      ? {...pairingLook,realModel:chosenFinish.realModel,handoffToken:chosenFinish.handoffToken}
+      : pairingLook
+    : undefined,[pairingLook,chosenFinish]);
   const comparedLooks = useMemo(()=>compareStyleDirectorLooks(looks,compareLens),[looks,compareLens]);
   const progress = complete ? 100 : Math.round((index / steps.length) * 100);
   const journeyScope = useMemo(()=>createPreviewRequestScope(),[index,journeyEpoch]);
@@ -136,6 +144,16 @@ export default function StyleDirectorPage() {
     if(!renderScope.isEnabled()) return;
     renderScope.invalidate();
     setChosenPairing(item);
+    setChosenFinish(null);
+    setRenderSet(null);setPhotoreal(null);setPhotorealQaStatus(null);
+    setRenderCalibrationIdentity(null);setLockedPreviewImage("");setLockedPreviewCalibrationIdentity("");
+    setRendering(false);setError("");
+  }
+
+  function applyFinish(item:StyleDirectorClientFinish|null) {
+    if(!renderScope.isEnabled()) return;
+    renderScope.invalidate();
+    setChosenFinish(item);
     setRenderSet(null);setPhotoreal(null);setPhotorealQaStatus(null);
     setRenderCalibrationIdentity(null);setLockedPreviewImage("");setLockedPreviewCalibrationIdentity("");
     setRendering(false);setError("");
@@ -164,6 +182,7 @@ export default function StyleDirectorPage() {
       setSelected(0);
       setCompareOpen(false);
       setPairings(null);setChosenPairing(null);setPairingsError("");setPairingsLoading(false);
+      setChosenFinish(null);
       setRenderSet(null);
       setPhotoreal(null); setPhotorealQaStatus(null);
       setRenderCalibrationIdentity(null);
@@ -260,6 +279,7 @@ export default function StyleDirectorPage() {
     setIndex(0); setAnswers({}); setLooks([]); setSelected(0);
     setCompareOpen(false); setCompareLens("overall");
     setPairings(null);setChosenPairing(null);setPairingsError("");setPairingsLoading(false);
+    setChosenFinish(null);
     setLoading(false); setRendering(false);
     setRenderSet(null); setRenderCalibrationIdentity(null);
     setPhotoreal(null); setPhotorealQaStatus(null);
@@ -281,6 +301,7 @@ export default function StyleDirectorPage() {
     renderScope.invalidate();
     setSelected(i); setRendering(false); setError("");
     setPairings(null);setChosenPairing(null);setPairingsError("");setPairingsLoading(false);
+    setChosenFinish(null);
     setRenderSet(null); setRenderCalibrationIdentity(null);
     setPhotoreal(null); setPhotorealQaStatus(null);
     setLockedPreviewImage(""); setLockedPreviewCalibrationIdentity("");
@@ -338,7 +359,7 @@ export default function StyleDirectorPage() {
     };
   },[sessionId]);
 
-  const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi Linen Earth, I created “${selectedLook.title}” in the Style Director. Hero fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}.${chosenPairing && selectedLook.realModel ? ` Selected outfit: ${selectedLook.realModel.shirtName} shirt + ${selectedLook.realModel.pantName} trousers.` : ""} I’d like to explore this look in store, subject to physical stock and tailoring confirmation.`)}` : "#";
+  const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi Linen Earth, I created “${selectedLook.title}” in the Style Director. Hero fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}.${chosenPairing && selectedLook.realModel ? ` Selected outfit: ${selectedLook.realModel.shirtName} shirt + ${selectedLook.realModel.pantName} trousers.` : ""}${chosenFinish?` Selected finish: ${chosenFinish.label}.`:""} I’d like to explore this look in store, subject to physical stock and tailoring confirmation.`)}` : "#";
 
   const designerHandoff = selectedLook?.realModel
     ? (() => {
@@ -515,6 +536,14 @@ export default function StyleDirectorPage() {
               {pairings?.length===0 && <p className="directorPairingEmpty">No other pairing passed the current construction rules. The original outfit remains unchanged.</p>}
               {chosenPairing && <p className="directorPairingSelected" role="status">{chosenPairing.reviewNote}</p>}
             </section>}
+            {pairingLook?.realModel && originalLook && <StyleDirectorFinishes
+              key={`${originalLook.id}:${pairingLook.realModel.shirtId}:${pairingLook.realModel.pantId}`}
+              answers={answers as StyleDirectorAnswers}
+              sourceLookId={originalLook.id}
+              base={pairingLook.realModel}
+              activeId={chosenFinish?.id||null}
+              onChoose={applyFinish}
+            />}
             <div className="directorActions">
               {selectedLook.realModel
                 ? <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering || !!heroRender || !lockedPreviewImage || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity}>{rendering?(photorealQaStatus==="checking"?"Checking photoreal…":"Rendering…"):heroRender?"Photoreal ready":photoreal?"Retry photoreal check":lockedPreviewImage?"Make photoreal":"Preparing real model…"} <b>✦</b></button>
