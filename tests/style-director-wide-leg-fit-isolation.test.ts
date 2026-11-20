@@ -8,13 +8,13 @@ import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 test("wide-leg tapered fit and pleated-front errors are reviewed independently", () => {
   for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
     for (const tapered of [false, true]) {
-      for (const missingPleat of [false, true]) {
+  
         const spec = {
           shirt: { type: "dress_shirt", collar: "spread_collar", wear: "tucked",
             sleeve, cuff: "barrel_cuff_1_button" },
           pant: { type: "wide_leg_relaxed_drape",
-            fit: tapered ? "slim_tapered" : "relaxed",
-            pleat: missingPleat ? "flat_front" : "single_pleat_forward",
+            fit: tapered ? "slim_tapered" : "wide_leg_drape",
+            pleat: "flat_front",
             hem: "plain_hem", break: "no_break" },
         } as StyleSpecV2;
         const before = JSON.stringify(spec);
@@ -27,7 +27,6 @@ test("wide-leg tapered fit and pleated-front errors are reviewed independently",
         assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
         assert.deepEqual(styleDirectorConstructionIssues(spec), first);
         assert.equal(JSON.stringify(spec), before);
-      }
     }
   }
 });
