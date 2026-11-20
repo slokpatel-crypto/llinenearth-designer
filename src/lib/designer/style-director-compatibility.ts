@@ -1944,7 +1944,9 @@ export function styleDirectorConstructionSuggestions(
 ): DirectorConstructionSuggestion[] {
   const suggestions: DirectorConstructionSuggestion[] = [];
   const seen = new Set<string>();
-  for (const issue of styleDirectorConstructionIssues(spec, occasion)) {
+  const currentIssues = styleDirectorConstructionIssues(spec, occasion);
+  const originalCodes = new Set(currentIssues.map(x => x.code));
+  for (const issue of currentIssues) {
     const proposal = directorConstructionProposals[issue.code];
     if (!proposal) continue;
     const [optionGroup, proposedId] = proposal;
@@ -1958,7 +1960,6 @@ export function styleDirectorConstructionSuggestions(
     // An alternative must not introduce a new construction contradiction
     // elsewhere in the separately saved specification. Evaluate a shallow,
     // ephemeral copy only; never alter locked IDs or persist a repair.
-    const originalCodes = new Set(styleDirectorConstructionIssues(spec, occasion).map(x => x.code));
     const proposedSpec = {
       ...spec,
       [garment]: { ...spec[garment], [key]: proposedId },
