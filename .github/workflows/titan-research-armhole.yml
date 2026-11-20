@@ -136,6 +136,12 @@ jobs:
                   assert values["min"]<=values["p90"]<=values["max"]
                   assert values["matchedOriginalVertexCount"]==candidate["sharedOriginalSeamVertices"]
                   print("REAL_CC0_SOURCE_EDGE_VERTEX_MODIFIER_SEPARATION",side,name,values)
+              contact_stage=candidate["realWorldBVHTrianglePairContactsByStage"]
+              assert set(contact_stage)=={"selectedBodyShell","afterSmoothing","afterBodyClearance","afterClothThickness"}
+              assert all(type(n) is int and n>=0 for n in contact_stage.values())
+              final_contact_key=f"ShirtTorsoFabric::ShirtSleeve{side}Fabric"
+              assert contact_stage["afterClothThickness"]==trial["garmentContactPairs"][final_contact_key]
+              print("REAL_CC0_ARMHOLE_BVH_BY_MODIFIER_STAGE",side,contact_stage)
           for pair in base["garmentContactPairs"]:
               before=base["garmentContactPairs"][pair]
               after=trial["garmentContactPairs"][pair]
