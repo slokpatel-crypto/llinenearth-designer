@@ -119,6 +119,9 @@ def uv_edge_continuity_report(obj, uv_layer):
     seams = 0
     minus_y_seams = 0
     plus_y_seams = 0
+    seam_length_m = 0.0
+    visible_seam_length_m = 0.0
+    rear_seam_length_m = 0.0
     world = [obj.matrix_world @ vertex.co for vertex in mesh.vertices]
     mean_y = sum(vertex.y for vertex in world) / len(world)
     largest_gap = 0.0
@@ -132,11 +135,17 @@ def uv_edge_continuity_report(obj, uv_layer):
             error = max(math.dist(a[0], b[0]), math.dist(a[1], b[1]))
             if error > 1e-6:
                 seams += 1
+                physical_length = (world[edge[0]] - world[edge[1]]).length
+                if not math.isfinite(physical_length) or physical_length <= 1e-10:
+                    raise RuntimeError("A UV seam lies on an invalid real source edge.")
+                seam_length_m += physical_length
                 mid_y = (world[edge[0]].y + world[edge[1]].y) * 0.5
                 if mid_y < mean_y:
                     minus_y_seams += 1
+                    visible_seam_length_m += physical_length
                 else:
                     plus_y_seams += 1
+                    rear_seam_length_m += physical_length
                 largest_gap = max(largest_gap, error)
     return {
         "sourceTopologicalEdges": len(incidents),
@@ -145,6 +154,9 @@ def uv_edge_continuity_report(obj, uv_layer):
         "uvDiscontinuityEdges": seams,
         "minusYCameraFacingSeamEdges": minus_y_seams,
         "plusYCameraAwaySeamEdges": plus_y_seams,
+        "discontinuousSourceEdgeLengthMm": round(seam_length_m * 1000.0, 3),
+        "frontDiscontinuousEdgeLengthMm": round(visible_seam_length_m * 1000.0, 3),
+        "rearDiscontinuousEdgeLengthMm": round(rear_seam_length_m * 1000.0, 3),
         "maxUvDiscontinuityMetres": round(largest_gap, 7),
         "sewnSeamApproval": False,
     }
