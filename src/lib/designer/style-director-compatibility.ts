@@ -1947,9 +1947,9 @@ export function styleDirectorConstructionSuggestions(
   const currentIssues = styleDirectorConstructionIssues(spec, occasion);
   // Track multiplicity, not only distinct codes: a proposed repair must not
   // create another instance of an already-reported construction fault.
-  const originalIssueCounts = new Map<DirectorConstructionIssue["code"], number>();
+  let workingIssueCounts = new Map<DirectorConstructionIssue["code"], number>();
   for (const issue of currentIssues) {
-    originalIssueCounts.set(issue.code, (originalIssueCounts.get(issue.code) ?? 0) + 1);
+    workingIssueCounts.set(issue.code, (workingIssueCounts.get(issue.code) ?? 0) + 1);
   }
   // Validate the complete set of recommendations as it is assembled, not
   // merely each change against the original saved state. Suggestions remain
@@ -1979,7 +1979,7 @@ export function styleDirectorConstructionSuggestions(
         (proposedIssueCounts.get(proposedIssue.code) ?? 0) + 1);
     }
     if ([...proposedIssueCounts].some(([code, count]) =>
-      count > (originalIssueCounts.get(code) ?? 0))) continue;
+      count > (workingIssueCounts.get(code) ?? 0))) continue;
     // A recommendation must actually resolve at least one occurrence of
     // the contradiction that caused it. Merely changing a canonical ID
     // without reducing that fault is not a justified tailoring suggestion.
@@ -1987,6 +1987,8 @@ export function styleDirectorConstructionSuggestions(
       .filter(candidateIssue => candidateIssue.code === issue.code).length;
     if ((proposedIssueCounts.get(issue.code) ?? 0) >= workingCauseCount) continue;
     suggestedSpec = proposedSpec;
+    // Never restore a conflict already resolved by an earlier suggestion.
+    workingIssueCounts = proposedIssueCounts;
     seen.add(optionGroup);
     suggestions.push({
       cause: issue.code,
