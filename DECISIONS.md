@@ -1,5 +1,13 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-20 — Style Director offers read-only comparison across four fashion priorities
+
+**Customer journey:** after receiving three existing Style Director directions, customers can compare them side by side by overall balance, occasion, environment or expression. The pure comparison model reorders only the existing Designer Engine's bounded (0–100) candidate score dimensions; ties retain source order and invalid scores are unranked. Each panel shows the actual colourway, outfit information and, where available, existing canonical StyleSpec v2 construction IDs resolved through the shared options library. Choosing a card returns to the original unchanged selected look and its existing signed Designer handoff.
+
+**Safety and compatibility:** no new persisted schema, selection API, garment ID, scoring weight, paid AI path, physical measurements, stock claim or production approval. Every comparison is expressly provisional; a `needs_review` pairing or unsupported model remains labelled as such. Old saved/locked designs and signed handoffs are unaffected. Render/photo-calibration lifecycle is unchanged.
+
+**Verification:** deterministic pure tests cover all four lenses, tie and missing-score behavior, immutable inputs, exact construction IDs and preliminary/concept/review labels. The existing built-Next Chromium Style Director journey checks comparison opening, mobile/tablet/desktop overflow, priority switching without paid requests, and selecting a look without altering its original flow. Physical availability, production buildability and owner/tailor approval remain independent gates.
+
 ## 2026-11-20 — Reference photo-to-outfit selections are explicit and source-private
 
 **Contract:** M2 uses a small, allowlisted version-1 *navigation* contract (`from=reference-match&referenceVersion=1&shirt=<ID>&pant=<ID>`), not a new StyleSpec. Both IDs must be customer-confirmed and valid members of their separate existing static garment catalogues; duplicates or malformed links are refused. Designer restores only the selected IDs while retaining its existing versioned StyleSpec v2 and browser draft lifecycle.
@@ -541,7 +549,6 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
-
 
 ## 2026-11-20 — Worker C: authenticated saved-recipe continuation
 
