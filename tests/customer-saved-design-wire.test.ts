@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   CUSTOMER_SAVED_DESIGN_MAX_BYTES,
   parseCustomerSavedDesignWrite,
+  parseCustomerSavedDesignRow,
 } from "../src/lib/customer-saved-design-wire.ts";
 
 const valid = () => ({
@@ -49,4 +50,17 @@ test("nested recipe ownership claims and cyclic payloads fail closed", () => {
   const cyclic: Record<string, unknown> = {occasion: "office"};
   cyclic.self = cyclic;
   assert.equal(parseCustomerSavedDesignWrite({...valid(), recipe: {...valid().recipe, brief: cyclic}}, 400), null);
+});
+
+test("database read rows reject unexpected private columns and mismatched design IDs", () => {
+  const row = {payload: valid(), updated_at: "2026-11-20T00:00:00Z", design_id: "SD-recipe_1"};
+  assert.deepEqual(parseCustomerSavedDesignRow(row), row);
+  for (const bad of [
+    {...row, owner_user_id: "alice"},
+    {...row, access_token: "secret"},
+    {...row, design_id: "another-design"},
+    {...row, updated_at: "not-a-date"},
+    {...row, payload: {...valid(), recipe: {...valid().recipe, brief: {ownerId: "bob"}}}},
+    {payload: valid()},
+  ]) assert.equal(parseCustomerSavedDesignRow(bad), null);
 });
