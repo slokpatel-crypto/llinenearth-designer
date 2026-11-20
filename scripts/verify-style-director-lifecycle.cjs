@@ -247,7 +247,7 @@ async function regression(name, run) {
     const comparisonSize = await comparison.evaluate((node) => ({ scroll: node.scrollWidth, client: node.clientWidth }));
     assert.ok(comparisonSize.scroll <= comparisonSize.client + 2, "Comparison must not horizontally overflow at " + width + "px");
     await page.getByRole("button", { name: "Environment", exact: true }).click();
-    assert.equal(await comparison.locator(".directorCompareCardTop span").filter({ hasText: "#1" }).count(), 1);
+    assert.ok((await comparison.locator(".directorCompareCardTop span").filter({ hasText: "#1" }).count()) >= 1, "At least one look leads; exact ties may share a rank");
     await page.screenshot({ path: path.join(output, "comparison-" + width + ".png"), fullPage: true });
     await page.getByRole("button", { name: /Hide look comparison/ }).click();
     assert.equal(await comparison.isVisible(), false);
