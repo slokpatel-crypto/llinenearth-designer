@@ -126,7 +126,11 @@ jobs:
           assert base["boundaryIntersections"]==uv["boundaryIntersections"], "UV edit must NOT alter real collisions"
           assert base["garmentPairIntersections"]==uv["garmentPairIntersections"], "UV edit must NOT conceal real panel crossings"
           assert uv["productionApproved"] is False and uv["preflightReady"] is False
-          assert uv["rejectionReasonCount"]>=base["rejectionReasonCount"], "UV research cannot silently erase rejection evidence"
+          def physical_reason(reason):
+              return " collapsed UV triangles;" not in reason and "triangles with non-finite UV coordinates;" not in reason
+          assert [x for x in base["reasons"] if physical_reason(x)]==[
+              x for x in uv["reasons"] if physical_reason(x)
+          ], "UV-only research may not remove any physical, fit or collision blocker"
           print("TITAN_NATIVE_ORIGINAL_GEOMETRY_AND_CONTACTS_UNCHANGED")
           PY
 
