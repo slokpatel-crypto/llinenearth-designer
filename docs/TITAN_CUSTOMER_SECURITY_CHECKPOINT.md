@@ -398,3 +398,12 @@ Prior parent matching-head evidence: Full CI #44657065416, Non-3D #44657065342 a
 - **Review:** cloud UI still uses owner revalidation before/after selected recovery, delete and local import; this source inspection does not substitute for authenticated two-account browser and staging revocation evidence.
 - **Blocked:** no dependency-isolated main intake, independent two-account session-switch browser QA at 390/768/1440, security review, physical stock/tailor/device/Blender/customer pilot acceptance. All corresponding T1–T6/J1–J6 human gates remain PENDING/BLOCKED. No main merge, live mutation, provider charges or Vercel deployment.
 - **Next slice:** create a minimal main-based cloud recovery intake with required dependencies, then test exact-head CI, security/disposable database and real two-account browser confirmation/focus races before considering main. This checkpoint-only result commit itself needs matching-head CI.
+
+
+## 2026-11-21 — Bounded cloud session verification response (pending exact-head CI)
+
+Parent application SHA: `5d8a41a44849e2d1364deb5255e16507e394b6b4` (prior matching-head CI and Non-3D success). Source change: `f5ce71751ad5ec4180ab982e924ef82ad47047e0`; correction: `1315fe961743b48c64a6945fa407f5c8621b866e`; regression: `facab6ed4db693c5f626b2cf74c58184ff319e2a`.
+
+Affected customer security criterion: session recheck must not consume unbounded upstream JSON. Added streamed 16 KiB cap, Content-Length preflight, strict UTF-8/JSON parsing and synthetic tests for normal, declared-oversized, streamed-oversized, malformed and missing-owner responses. **Not yet verified**: exact-head full CI, Non-3D/browser, security/release, disposable PostgreSQL as applicable. No production deployment or main integration.
+
+Blockers: branch remains significantly divergent from main; customer cloud endpoint and wire dependencies are not on main, so an isolated dependency-complete intake is still required. Real two-account staging/browser acceptance, migration activation, owner and physical release evidence remain pending. Next action: inspect matching-head CI for this checkpoint commit; fix failures before any intake or merge. Do not call this production-ready.
