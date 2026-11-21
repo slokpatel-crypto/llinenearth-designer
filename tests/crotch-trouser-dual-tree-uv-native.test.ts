@@ -8,7 +8,9 @@ test("real source UV spanning forest joins actual original mesh edges but reject
   const workflow=readFileSync(".github/workflows/titan-native-source-candidate.yml","utf8");
   const fixture=readFileSync("tests/python/test_source_trouser_dual_tree_uv.py","utf8");
   for (const term of [
-    "def connect_original_source_uv_forest(original_faces, separate_face_uv, original_cut_edges):",
+    "def connect_original_source_uv_forest(",
+    "preferred_tree_edges=None):",
+    "Selected edges disconnected a real original source component.",
     "if len(original_faces) != 2650 or len(separate_face_uv) != 2650:",
     "if left[1] == right[1]:",
     "adjacent[a].append((b, edge))",
@@ -40,6 +42,17 @@ test("real source UV spanning forest joins actual original mesh edges but reject
     'len(tree_body_pairs) != unchanged_source_pairs',
     'seam_winding["researchOnlyOriginalSourceDualTreeUvSurvey"] = tree_report',
   ]) assert.ok(blender.includes(term), term);
+  // Original Blender mesh IDs and UV measurements cannot be fabricated by
+  // int()/float() coercion, including in explicitly selected source UV trees.
+  for (const term of [
+    "any(type(v) is not int or v < 0 for v in raw_face)",
+    "isinstance(v, bool) or not isinstance(v, (int, float))",
+    "Original source cut-edge identities must be integer vertex IDs.",
+    "Selected original source UV tree edge is not a strict integer pair.",
+  ]) assert.ok(pure.includes(term), "source provenance guard missing: "+term);
+  assert.ok(!pure.includes("int(raw_edge[0])"));
+  assert.ok(!pure.includes("tuple(int(v) for v in raw_face)"));
+  assert.ok(!pure.includes("tuple(float(v) for v in uv) for uv in raw_uv"));
   assert.ok(!pure.includes("bpy.ops."),"Pure source UV seam routine cannot mutate Blender");
   assert.ok(!blender.includes("save_as_mainfile"),"Original Blender scene cannot be saved");
   for (const term of [

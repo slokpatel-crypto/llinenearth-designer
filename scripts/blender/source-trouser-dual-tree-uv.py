@@ -15,7 +15,9 @@ def _length(a, b):
     return math.hypot(a[0]-b[0], a[1]-b[1])
 
 
-def connect_original_source_uv_forest(original_faces, separate_face_uv, original_cut_edges):
+def connect_original_source_uv_forest(
+        original_faces, separate_face_uv, original_cut_edges,
+        preferred_tree_edges=None):
     if len(original_faces) != 2650 or len(separate_face_uv) != 2650:
         raise ValueError("Must use actual 2,650 original trouser-source faces/quad charts.")
     if len(original_cut_edges) != 8:
@@ -24,14 +26,21 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
     original_indices = []
     local = []
     for face_index, (raw_face, raw_uv) in enumerate(zip(original_faces, separate_face_uv)):
-        face = tuple(int(v) for v in raw_face)
-        coords = [tuple(float(v) for v in uv) for uv in raw_uv]
-        if (len(face) != 4 or len(set(face)) != 4 or min(face) < 0
-                or len(coords) != 4 or any(
-                    len(uv) != 2 or not all(math.isfinite(v) for v in uv)
-                    for uv in coords
-                )):
+        # Original source vertex IDs and UV coordinates are evidence, not
+        # labels to coerce. int("1"), int(1.9), float(True) and
+        # float("0.01") must never silently invent source topology/scale.
+        if (len(raw_face) != 4 or
+                any(type(v) is not int or v < 0 for v in raw_face) or
+                len(set(raw_face)) != 4 or len(raw_uv) != 4):
             raise ValueError("Original source face or metric UV loop is invalid.")
+        face = tuple(raw_face)
+        coords = []
+        for uv in raw_uv:
+            if (len(uv) != 2 or any(
+                    isinstance(v, bool) or not isinstance(v, (int, float))
+                    or not math.isfinite(v) for v in uv)):
+                raise ValueError("Original source face or metric UV loop is invalid.")
+            coords.append(tuple(float(v) for v in uv))
         # All face UV charts must be nondegenerate, finite and have same orientation.
         cross1 = ((coords[1][0]-coords[0][0])*(coords[2][1]-coords[0][1])
                   -(coords[1][1]-coords[0][1])*(coords[2][0]-coords[0][0]))
@@ -47,10 +56,14 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
             owners[edge].append((face_index, (a, b) == edge))
     if any(len(rows) > 2 for rows in owners.values()):
         raise ValueError("Actual source seam has nonmanifold original face ownership.")
+    if any(
+            len(edge) != 2 or any(type(v) is not int or v < 0 for v in edge)
+            for edge in original_cut_edges):
+        raise ValueError("Original source cut-edge identities must be integer vertex IDs.")
     cuts = {tuple(sorted(edge)) for edge in original_cut_edges}
     if len(cuts) != 8 or any(
-        len(edge) != 2 or edge[0] == edge[1] or
-        len(owners.get(edge, [])) != 1 for edge in cuts
+        edge[0] == edge[1] or len(owners.get(edge, [])) != 1
+        for edge in cuts
     ):
         raise ValueError("Cannot associate genuine original cut seam with one original owner.")
     adjacent = [[] for _ in original_indices]
@@ -67,6 +80,50 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
         shared.append((edge, a, b))
     for neighbours in adjacent:
         neighbours.sort(key=lambda row: (row[0], row[1]))
+
+    # Optional maximum-retained-real-edge forest from an independent source
+    # geometry Kruskal selector. Validate it is an actual tree for EACH real
+    # original source component. It may not silently remove actual faces or
+    # fabricate a new connected source mesh.
+    expected_original_component_count = None
+    allowed_tree = None
+    if preferred_tree_edges is not None:
+        if not isinstance(preferred_tree_edges, (tuple, list, set, frozenset)):
+            raise ValueError("Real source UV tree selection must be an explicit edge collection.")
+        source_edge_set = {edge for edge, _, _ in shared}
+        proposed = []
+        for raw_edge in preferred_tree_edges:
+            if (len(raw_edge) != 2 or any(
+                    type(index) is not int for index in raw_edge)):
+                raise ValueError("Selected original source UV tree edge is not a strict integer pair.")
+            u, v = raw_edge
+            if u >= v or u < 0 or (u, v) not in source_edge_set:
+                raise ValueError("Selected UV edge is not a true canonical shared source edge.")
+            proposed.append((u, v))
+        allowed_tree = set(proposed)
+        if len(allowed_tree) != len(proposed):
+            raise ValueError("Duplicated original source UV retained tree edges.")
+        component_seen = set()
+        expected_original_component_count = 0
+        for original_face in range(len(local)):
+            if original_face in component_seen:
+                continue
+            expected_original_component_count += 1
+            stack = [original_face]
+            component_seen.add(original_face)
+            while stack:
+                current_face = stack.pop()
+                for adjacent_face, _edge in adjacent[current_face]:
+                    if adjacent_face not in component_seen:
+                        component_seen.add(adjacent_face)
+                        stack.append(adjacent_face)
+        if len(allowed_tree) != len(local) - expected_original_component_count:
+            raise ValueError("Selected tree edges must preserve each true source component.")
+        adjacent = [
+            [(neighbour, edge) for neighbour, edge in neighbours
+             if edge in allowed_tree]
+            for neighbours in adjacent
+        ]
 
     placed = [None] * len(local)
     component = [-1] * len(local)
@@ -127,6 +184,9 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
 
     if any(row is None for row in placed) or sum(component_sizes) != len(local):
         raise ValueError("Original source dual-graph traversal lost actual faces.")
+    if (expected_original_component_count is not None
+            and len(component_sizes) != expected_original_component_count):
+        raise ValueError("Selected edges disconnected a real original source component.")
     uv_faces = [[placed[i][vertex] for vertex in face]
                 for i, face in enumerate(original_indices)]
     total_shared = len(shared)
@@ -182,7 +242,15 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
                 math.sqrt(cycle_square_gap_sum / cycle_count) if cycle_count else 0.0, 5
             ),
             "maximumTreeEdgeUvJoinErrorMm": round(max_tree_join_error_mm, 8),
-            "actualOriginalSourceUVTopology": "deterministic face-adjacency spanning forest",
+            "actualOriginalSourceUVTopology": (
+                "deterministic max-retained-real-edge spanning forest"
+                if preferred_tree_edges is not None
+                else "deterministic face-adjacency spanning forest"
+            ),
+            "selectedForestSource": (
+                "explicit validated original-source shared edge list"
+                if preferred_tree_edges is not None else "original face-index BFS"
+            ),
             "faceTreeParentsRecorded": sum(p >= 0 for p in parent_face),
             "localMetricTrianglesRemainUnscaled": True,
             "sourcePanelsFullyStitchedInUV": False,
