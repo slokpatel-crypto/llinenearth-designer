@@ -293,3 +293,40 @@ test("retired sibling construction IDs prevent unprovable alternatives for that 
     [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]],
     "invalid trouser option must not suppress independent valid shirt guidance");
 });
+
+test("missing linked construction IDs cannot certify otherwise valid repairs", () => {
+  const missingPantRise = makeSpec();
+  missingPantRise.pant.type = "wide_leg_relaxed_drape";
+  missingPantRise.pant.fit = "slim_tapered";
+  delete (missingPantRise.pant as Partial<StyleSpecV2["pant"]>).rise;
+  const beforePant = JSON.stringify(missingPantRise);
+  Object.freeze(missingPantRise.shirt);
+  Object.freeze(missingPantRise.pant);
+  Object.freeze(missingPantRise);
+  assert.ok(styleDirectorConstructionIssues(missingPantRise).some(issue =>
+    issue.code === "wide_leg_tapered_fit_mismatch"));
+  assert.deepEqual(styleDirectorConstructionSuggestions(missingPantRise), []);
+  assert.equal(JSON.stringify(missingPantRise), beforePant);
+
+  const missingShirtSleeve = makeSpec();
+  missingShirtSleeve.shirt.sleeve = "half_sleeve";
+  missingShirtSleeve.shirt.cuff = "french_double_cuff";
+  delete (missingShirtSleeve.shirt as Partial<StyleSpecV2["shirt"]>).sleeve;
+  assert.deepEqual(styleDirectorConstructionSuggestions(missingShirtSleeve), []);
+
+  const independentShirt = makeSpec();
+  independentShirt.shirt.sleeve = "half_sleeve";
+  independentShirt.shirt.cuff = "french_double_cuff";
+  independentShirt.pant.type = "wide_leg_relaxed_drape";
+  independentShirt.pant.fit = "slim_tapered";
+  delete (independentShirt.pant as Partial<StyleSpecV2["pant"]>).rise;
+  assert.deepEqual(styleDirectorConstructionSuggestions(independentShirt).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]],
+    "missing trouser data must not suppress an independent valid shirt repair");
+
+  const complete = makeSpec();
+  complete.pant.type = "wide_leg_relaxed_drape";
+  complete.pant.fit = "slim_tapered";
+  assert.deepEqual(styleDirectorConstructionSuggestions(complete).map(x =>
+    [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]]);
+});
