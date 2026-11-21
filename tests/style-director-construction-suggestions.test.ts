@@ -443,3 +443,19 @@ test("prototype-backed garment records cannot execute inherited accessors during
   assert.deepEqual(styleDirectorConstructionSuggestions(nullPrototype).map(x =>
     [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]]);
 });
+
+
+test("malformed root payloads fail closed without inventing construction alternatives", () => {
+  for (const invalid of [null, undefined, 0, "", false]) {
+    assert.deepEqual(
+      styleDirectorConstructionSuggestions(invalid as unknown as StyleSpecV2),
+      [],
+      `malformed saved payload ${String(invalid)} must not be reviewed`,
+    );
+  }
+  const valid = makeSpec();
+  valid.pant.type = "wide_leg_relaxed_drape";
+  valid.pant.fit = "slim_tapered";
+  assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x => x.proposedId),
+    ["wide_leg_drape"], "valid saved garment guidance remains unchanged");
+});
