@@ -482,3 +482,36 @@ test("prototype-backed saved-spec roots cannot certify construction repairs", ()
     [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]],
     "null-prototype JSON-shaped root remains supported");
 });
+
+test("accessor-backed required construction fields fail closed before issue evaluation", () => {
+  for (const [garment, field] of [
+    ["shirt", "sleeve"],
+    ["shirt", "cuff"],
+    ["pant", "type"],
+    ["pant", "fit"],
+  ] as const) {
+    const locked = makeSpec();
+    locked.shirt.sleeve = "half_sleeve";
+    locked.shirt.cuff = "french_double_cuff";
+    locked.pant.type = "wide_leg_relaxed_drape";
+    locked.pant.fit = "slim_tapered";
+    let getterCalls = 0;
+    Object.defineProperty(locked[garment], field, {
+      enumerable: true,
+      configurable: true,
+      get() {
+        getterCalls++;
+        throw new Error("required construction getter must not execute");
+      },
+    });
+    assert.deepEqual(styleDirectorConstructionSuggestions(locked), [],
+      `unsafe ${garment}.${field} must not generate construction guidance`);
+    assert.equal(getterCalls, 0);
+  }
+
+  const valid = makeSpec();
+  valid.shirt.sleeve = "half_sleeve";
+  valid.shirt.cuff = "french_double_cuff";
+  assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
+});
