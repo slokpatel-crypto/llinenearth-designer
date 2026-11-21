@@ -122,3 +122,17 @@ test("cloud responses enforce declared and streamed size limits before decoding"
   await assert.rejects(() => deleteCloudDesign(saved.id, async () =>
     new Response("{", {headers: {"content-type": "application/json"}})), /Invalid cloud/);
 });
+
+test("valid numeric Content-Length permits bounded cloud save, list, recovery and delete", async () => {
+  const withLength = (body: unknown) => {
+    const encoded = JSON.stringify(body);
+    return new Response(encoded, { headers: {
+      "content-type": "application/json",
+      "content-length": String(new TextEncoder().encode(encoded).byteLength),
+    } });
+  };
+  await saveCloudDesign(saved, async () => withLength({saved: true, designId: saved.id}));
+  assert.deepEqual(await listCloudDesigns(async () => withLength({designs: [row]})), [saved]);
+  assert.deepEqual(await getCloudDesign(saved.id, async () => withLength({design: row})), saved);
+  assert.equal(await deleteCloudDesign(saved.id, async () => withLength({deleted: true})), true);
+});
