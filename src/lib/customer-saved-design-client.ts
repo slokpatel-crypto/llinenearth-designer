@@ -71,6 +71,7 @@ export async function saveCloudDesign(saved: SavedDesign, transport: SavedDesign
 export async function listCloudDesigns(transport: SavedDesignTransport = fetch): Promise<SavedDesign[]> {
   const result = await json(await transport(endpoint, { credentials: "same-origin", cache: "no-store" }));
   if (!result || typeof result !== "object" || Array.isArray(result) ||
+    Object.keys(result).length !== 1 || !Object.prototype.hasOwnProperty.call(result, "designs") ||
     !Array.isArray((result as {designs?: unknown}).designs) ||
     (result as {designs: unknown[]}).designs.length > 24)
     throw new Error("Invalid cloud saved-design response.");
