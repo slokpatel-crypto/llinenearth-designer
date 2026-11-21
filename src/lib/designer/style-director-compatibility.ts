@@ -1942,6 +1942,16 @@ export function styleDirectorConstructionSuggestions(
   spec: Pick<StyleSpecV2, "shirt" | "pant">,
   occasion?: OccasionTier,
 ): DirectorConstructionSuggestion[] {
+  // Saved construction data is JSON-shaped. Prototype-backed records can
+  // execute inherited getters during issue evaluation, before any proposed
+  // garment copy is checked. Abstain rather than execute those accessors.
+  for (const garment of ["shirt", "pant"] as const) {
+    const descriptor = Object.getOwnPropertyDescriptor(spec, garment);
+    if (!descriptor || !Object.hasOwn(descriptor, "value") ||
+        !descriptor.value || typeof descriptor.value !== "object") return [];
+    const prototype = Object.getPrototypeOf(descriptor.value);
+    if (prototype !== Object.prototype && prototype !== null) return [];
+  }
   const suggestions: DirectorConstructionSuggestion[] = [];
   const seen = new Set<string>();
   const currentIssues = styleDirectorConstructionIssues(spec, occasion);
