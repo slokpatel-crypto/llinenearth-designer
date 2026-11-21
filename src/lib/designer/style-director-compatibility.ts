@@ -2002,9 +2002,9 @@ export function styleDirectorConstructionSuggestions(
       : (["shirt.sleeve", "shirt.cuff"] as const);
     // A saved shirt may carry additional construction choices. If present,
     // these must be recognised before recommending a cuff alteration; an
-    // unknown collar, placket, wear or fit cannot be silently certified.
+    // unknown collar, placket, wear, fit, button or pocket cannot be silently certified.
     if (garment === "shirt" &&
-        (["shirt.collar", "shirt.placket", "shirt.wear", "shirt.fit"] as const)
+        (["shirt.collar", "shirt.placket", "shirt.wear", "shirt.fit", "shirt.button", "shirt.pocket"] as const)
           .some(group => {
             const field = group.split(".")[1];
             const value = styleDirectorLockedOptionValue(spec.shirt, field);
