@@ -31,7 +31,13 @@ function isUsableAtelierRecipe(brief: Record<string, unknown>, version: Record<s
   if (!isText(renderSet.modelId) || !renderSet.modelId ||
       !Array.isArray(renderSet.renders) || !renderSet.renders.every(item =>
         isRecord(item) && isText(item.view) && isText(item.src))) return false;
-  if (isText(renderSet.designVersionId) && renderSet.designVersionId !== version.id) return false;
+  // Optional legacy fields remain optional, but present integrity references
+  // must be well-typed and consistent. A numeric or null reference must not
+  // silently bypass the cross-version checks during recovery.
+  if (renderSet.designVersionId !== undefined &&
+      (!isText(renderSet.designVersionId) || renderSet.designVersionId !== version.id)) return false;
+  if (version.specHash !== undefined && !isText(version.specHash)) return false;
+  if (renderSet.specHash !== undefined && !isText(renderSet.specHash)) return false;
   if (isText(version.specHash) && isText(renderSet.specHash) && renderSet.specHash !== version.specHash) return false;
   return true;
 }
