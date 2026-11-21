@@ -465,3 +465,12 @@ Evidence: source and regression committed; no local test execution. Matching-hea
 - **Evidence:** previous parent Full CI #44905677566 and Non-3D #44905677558 SUCCESS. New source and negative regression committed; no local tests run; matching-head CI for new SHA pending at checkpoint. No physical or staging verification claimed.
 - **Blockers:** authenticated two-account browser and disposable database verification, independent security review, isolated dependency-complete main intake; real stock, tailor, operator, device and native geometry acceptance remain PENDING/BLOCKED.
 - **Next slice:** verify exact-head CI, perform authenticated owner-switch isolation with disposable DB, then assess safe main-based intake. No deployment or live-data mutations.
+
+
+## 2026-11-21 — Exact-head CI verification of hostile accessor regression
+- **Verified parent/head:** `704b6788096e4b0cf207e537e64721857f29b1da` (previous checkpoint; no new application code in this verification slice).
+- **Criterion:** automated customer saved-design hostile-accessor regression and full non-3D engineering suite at the same commit.
+- **Evidence:** GitHub Actions Full CI run #44910930048 **SUCCESS** and Deep Engine Non-3D QA run #44910930033 **SUCCESS**, both fetched by exact commit SHA. This is automated CI evidence, not independently executed local tests, authenticated browser pilot, staging, or physical approval.
+- **Main safety:** live main `480fbea8c110bef9505fd8ccd072bf0fd69dea2b` retains `vercel.json` git.deploymentEnabled=false; candidate branch compared to main at 291 ahead / 33 behind. Entire stacked branch is **NOT** eligible for main merge.
+- **Blockers:** customer two-account real authenticated browser isolation, disposable PostgreSQL ownership/RLS integration, independent review, dependency-complete main-based intake, stock/tailor/operator/device/native 3D human evidence all remain PENDING/BLOCKED.
+- **Next acceptance slice:** build an isolated main-based cloud saved-design wire + client dependency intake, with actual account isolation and disposable DB checks; do not merge until exact-intake-head CI, browser, security and release gates pass. No deployment or live data mutation.
