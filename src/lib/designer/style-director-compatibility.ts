@@ -1960,6 +1960,12 @@ export function styleDirectorConstructionSuggestions(
     if (!proposal) continue;
     const [optionGroup, proposedId] = proposal;
     const [garment, key] = optionGroup.split(".") as ["shirt" | "pant", string];
+    // A retired or missing garment type cannot establish which construction
+    // alternatives are safe. Abstain for that garment rather than suggesting
+    // a canonical component against an unrecognised saved silhouette.
+    const garmentType = styleDirectorLockedOptionValue(spec[garment], "type");
+    if (typeof garmentType !== "string" ||
+        !optionsFor(`${garment}.type`).some(option => option.id === garmentType)) continue;
     const savedId = styleDirectorLockedOptionValue(spec[garment], key);
     const catalog = optionsFor(optionGroup);
     if (typeof savedId !== "string" ||
