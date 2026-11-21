@@ -1970,8 +1970,8 @@ export function styleDirectorConstructionSuggestions(
     // field is retired. Do not certify a proposed repair against an unknown
     // sibling option: the validator cannot prove compatibility with it.
     const linkedGroups = garment === "pant"
-      ? ["pant.fit", "pant.pleat", "pant.rise", "pant.waistband", "pant.hem", "pant.break"]
-      : ["shirt.sleeve", "shirt.cuff"];
+      ? (["pant.fit", "pant.pleat", "pant.rise", "pant.waistband", "pant.hem", "pant.break"] as const)
+      : (["shirt.sleeve", "shirt.cuff"] as const);
     if (linkedGroups.some(group => {
       const field = group.split(".")[1];
       const value = styleDirectorLockedOptionValue(spec[garment], field);
