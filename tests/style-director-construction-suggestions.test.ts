@@ -589,3 +589,28 @@ test("optional shirt accessors cannot run before construction review", () => {
   assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
     [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
 });
+
+
+test("symbol-keyed saved garment accessors never run during deterministic advisory review", () => {
+  const spec = makeSpec();
+  spec.shirt.sleeve = "half_sleeve";
+  spec.shirt.cuff = "french_double_cuff";
+  spec.pant.type = "wide_leg_relaxed_drape";
+  spec.pant.fit = "slim_tapered";
+  let calls = 0;
+  Object.defineProperty(spec.pant, Symbol("untrusted-extension"), {
+    enumerable: true,
+    get() {
+      calls++;
+      throw new Error("symbol accessor must never execute");
+    },
+  });
+  const first = styleDirectorConstructionSuggestions(spec);
+  assert.deepEqual(first.map(item => [item.optionGroup, item.proposedId]),
+    [["shirt.cuff", "open_short_hem_cuff"]],
+    "unsafe trouser extensions must not suppress independent shirt guidance");
+  assert.deepEqual(styleDirectorConstructionSuggestions(spec), first);
+  assert.equal(calls, 0);
+  assert.equal(spec.pant.fit, "slim_tapered");
+  assert.equal(spec.shirt.cuff, "french_double_cuff");
+});
