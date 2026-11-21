@@ -103,7 +103,7 @@ export async function currentCloudCustomerId(
   // upstream response or trust Content-Length as a substitute for streamed size.
   const limit = 16 * 1024;
   const declared = response.headers.get("content-length");
-  if (declared !== null && (!/^\\d+$/.test(declared) || Number(declared) > limit))
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > limit))
     throw new Error("Customer session could not be verified.");
   let body: unknown;
   try {
