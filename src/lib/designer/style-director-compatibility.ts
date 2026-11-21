@@ -1975,8 +1975,10 @@ export function styleDirectorConstructionSuggestions(
     if (linkedGroups.some(group => {
       const field = group.split(".")[1];
       const value = styleDirectorLockedOptionValue(spec[garment], field);
-      return value !== undefined && (typeof value !== "string" ||
-        !optionsFor(group).some(option => option.id === value));
+      // A missing linked field is just as unverifiable as a retired ID:
+      // do not assume an implicit default in a saved/locked design.
+      return typeof value !== "string" ||
+        !optionsFor(group).some(option => option.id === value);
     })) continue;
     const savedId = styleDirectorLockedOptionValue(spec[garment], key);
     const catalog = optionsFor(optionGroup);
