@@ -423,3 +423,13 @@ Affected criterion: customer session revalidation HTTP response size/parse fail-
 - Evidence: committed source and Node regression assertions. **NOT YET VERIFIED**: no matching-head CI, local Node test, browser or disposable-DB result for `e4403c50ddf7fdd2cb95f1354af84b0eb4e7c03c` at checkpoint time. Earlier CI successes apply only to their own exact SHA.
 - Blockers: broad branch divergence from main; authenticated two-account browser/staging proof; feature-flagged database activation and independent physical/customer/operator gates. No main merge or deployment.
 - Next: verify exact-head Full CI and Non-3D QA, then isolate a dependency-complete main-based intake and perform authenticated account-switch privacy checks at 390/768/1440.
+
+
+## 2026-11-21 — bounded cloud saved-design response parsing
+
+Parent checkpoint head: `1e68874af69c4e4183a95000b034093dd4bad032` (Full CI #44872939638 SUCCESS; Non-3D #44872939642 SUCCESS at that parent).
+Code commit: `2ad2263ae1b8708f69a820a1e7426ff50acb782f`.
+Regression commit: `3645658707910ec4a7a7bc474cb2c64cadeae90a`.
+Criterion: customer owner-scoped cloud list/get/save/delete responses must not buffer unbounded server data. Added 25 MiB upper bound (24 designs at <=1 MiB each plus framing), preflight Content-Length validation, streamed byte counting and strict UTF-8/JSON decoding. Added declared-size, malformed-length, oversized streamed body and malformed JSON regressions.
+Evidence: code and regression committed, **matching-head CI/Non-3D and browser tests PENDING**. The successful workflows above predate these changes and do not certify them. No local tests executed, no live services or database touched.
+Next slice: verify exact-head workflows; review the 25 MiB ceiling against actual API response limits and two-account browser privacy, then isolate a dependency-complete main intake only after all gates pass. Customer pilot, stock, tailor, native and staging security acceptance remain BLOCKED/PENDING. No Vercel deployment or main merge.
