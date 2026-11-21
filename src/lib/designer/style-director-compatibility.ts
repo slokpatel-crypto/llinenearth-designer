@@ -1958,6 +1958,17 @@ export function styleDirectorConstructionSuggestions(
         !descriptor.value || typeof descriptor.value !== "object") return [];
     const prototype = Object.getPrototypeOf(descriptor.value);
     if (prototype !== Object.prototype && prototype !== null) return [];
+    // Required construction fields are read by the issue evaluator before
+    // individual proposals are considered. An accessor in any of these
+    // fields could execute arbitrary code, so refuse the unsafe record.
+    const requiredFields = garment === "shirt"
+      ? ["type", "sleeve", "cuff", "collar", "placket", "wear", "fit"]
+      : ["type", "fit", "pleat", "rise", "waistband", "hem", "break"];
+    const descriptors = Object.getOwnPropertyDescriptors(descriptor.value);
+    if (requiredFields.some(field => {
+      const own = descriptors[field];
+      return own !== undefined && !Object.hasOwn(own, "value");
+    })) return [];
   }
   const suggestions: DirectorConstructionSuggestion[] = [];
   const seen = new Set<string>();
