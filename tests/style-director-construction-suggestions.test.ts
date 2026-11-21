@@ -413,3 +413,33 @@ test("unrelated saved-spec accessors are never evaluated while reviewing constru
   assert.equal(locked.pant.fit, "slim_tapered");
   assert.equal(locked.shirt.cuff, "french_double_cuff");
 });
+
+
+test("prototype-backed garment records cannot execute inherited accessors during review", () => {
+  const inherited = makeSpec();
+  inherited.pant.type = "wide_leg_relaxed_drape";
+  inherited.pant.fit = "slim_tapered";
+  let getterCalls = 0;
+  const prototype = Object.create(Object.prototype);
+  Object.defineProperty(prototype, "legacyConstruction", {
+    get() { getterCalls++; throw new Error("inherited getter must not run"); },
+  });
+  Object.setPrototypeOf(inherited.pant, prototype);
+  assert.deepEqual(styleDirectorConstructionSuggestions(inherited), []);
+  assert.equal(getterCalls, 0);
+  assert.equal(inherited.pant.fit, "slim_tapered");
+
+  const accessorRoot = makeSpec();
+  Object.defineProperty(accessorRoot, "pant", {
+    enumerable: true,
+    get() { throw new Error("root garment accessor must not run"); },
+  });
+  assert.deepEqual(styleDirectorConstructionSuggestions(accessorRoot), []);
+
+  const nullPrototype = makeSpec();
+  nullPrototype.pant.type = "wide_leg_relaxed_drape";
+  nullPrototype.pant.fit = "slim_tapered";
+  Object.setPrototypeOf(nullPrototype.pant, null);
+  assert.deepEqual(styleDirectorConstructionSuggestions(nullPrototype).map(x =>
+    [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]]);
+});
