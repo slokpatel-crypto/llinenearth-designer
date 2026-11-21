@@ -1966,6 +1966,18 @@ export function styleDirectorConstructionSuggestions(
     const garmentType = styleDirectorLockedOptionValue(spec[garment], "type");
     if (typeof garmentType !== "string" ||
         !optionsFor(`${garment}.type`).some(option => option.id === garmentType)) continue;
+    // A known garment type is insufficient when another saved construction
+    // field is retired. Do not certify a proposed repair against an unknown
+    // sibling option: the validator cannot prove compatibility with it.
+    const linkedGroups = garment === "pant"
+      ? ["pant.fit", "pant.pleat", "pant.rise", "pant.waistband", "pant.hem", "pant.break"]
+      : ["shirt.sleeve", "shirt.cuff"];
+    if (linkedGroups.some(group => {
+      const field = group.split(".")[1];
+      const value = styleDirectorLockedOptionValue(spec[garment], field);
+      return value !== undefined && (typeof value !== "string" ||
+        !optionsFor(group).some(option => option.id === value));
+    })) continue;
     const savedId = styleDirectorLockedOptionValue(spec[garment], key);
     const catalog = optionsFor(optionGroup);
     if (typeof savedId !== "string" ||
