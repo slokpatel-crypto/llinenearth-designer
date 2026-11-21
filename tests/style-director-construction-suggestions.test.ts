@@ -560,3 +560,32 @@ test("retired shirt button and pocket IDs withhold cuff changes but preserve ind
   assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
     [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
 });
+
+
+test("optional shirt accessors cannot run before construction review", () => {
+  for (const field of ["button", "pocket", "collarFinish"] as const) {
+    const spec = makeSpec();
+    spec.shirt.sleeve = "half_sleeve";
+    spec.shirt.cuff = "french_double_cuff";
+    spec.pant.type = "wide_leg_relaxed_drape";
+    spec.pant.fit = "slim_tapered";
+    let getterCalls = 0;
+    Object.defineProperty(spec.shirt, field, {
+      enumerable: true,
+      configurable: true,
+      get() {
+        getterCalls++;
+        throw new Error("untrusted optional shirt getter must not run");
+      },
+    });
+    assert.deepEqual(styleDirectorConstructionSuggestions(spec), [],
+      `unsafe shirt.${field} must fail closed before evaluating issues`);
+    assert.equal(getterCalls, 0);
+  }
+
+  const valid = makeSpec();
+  valid.shirt.sleeve = "half_sleeve";
+  valid.shirt.cuff = "french_double_cuff";
+  assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
+});
