@@ -64,3 +64,16 @@ test("database read rows reject unexpected private columns and mismatched design
     {payload: valid()},
   ]) assert.equal(parseCustomerSavedDesignRow(bad), null);
 });
+
+test("unserializable database payloads fail closed without throwing", () => {
+  const row = {payload: valid(), updated_at: "2026-11-20T00:00:00Z"};
+  const cyclic = valid() as unknown as Record<string, unknown>;
+  (cyclic.recipe as Record<string, unknown>).loop = cyclic;
+  const withBigInt = {...valid(), recipe: {...valid().recipe, brief: {count: 1n}}};
+  const withThrowingSerializer = {...valid(), recipe: {...valid().recipe,
+    brief: {toJSON() { throw new Error("hostile serializer"); }}}};
+  for (const payload of [cyclic, withBigInt, withThrowingSerializer]) {
+    assert.doesNotThrow(() => parseCustomerSavedDesignRow({...row, payload}));
+    assert.equal(parseCustomerSavedDesignRow({...row, payload}), null);
+  }
+});
