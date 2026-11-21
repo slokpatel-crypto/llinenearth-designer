@@ -459,3 +459,26 @@ test("malformed root payloads fail closed without inventing construction alterna
   assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x => x.proposedId),
     ["wide_leg_drape"], "valid saved garment guidance remains unchanged");
 });
+
+test("prototype-backed saved-spec roots cannot certify construction repairs", () => {
+  const inherited = makeSpec();
+  inherited.pant.type = "wide_leg_relaxed_drape";
+  inherited.pant.fit = "slim_tapered";
+  let getterCalls = 0;
+  const prototype = Object.create(Object.prototype);
+  Object.defineProperty(prototype, "legacyApproval", {
+    get() { getterCalls++; throw new Error("inherited root getter must not run"); },
+  });
+  Object.setPrototypeOf(inherited, prototype);
+  assert.deepEqual(styleDirectorConstructionSuggestions(inherited), []);
+  assert.equal(getterCalls, 0);
+  assert.equal(inherited.pant.fit, "slim_tapered");
+
+  const plain = makeSpec();
+  plain.pant.type = "wide_leg_relaxed_drape";
+  plain.pant.fit = "slim_tapered";
+  Object.setPrototypeOf(plain, null);
+  assert.deepEqual(styleDirectorConstructionSuggestions(plain).map(x =>
+    [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]],
+    "null-prototype JSON-shaped root remains supported");
+});
