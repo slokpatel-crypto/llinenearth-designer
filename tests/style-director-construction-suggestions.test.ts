@@ -515,3 +515,24 @@ test("accessor-backed required construction fields fail closed before issue eval
   assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
     [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
 });
+
+test("retired optional shirt construction IDs block unsupported cuff advice", () => {
+  for (const field of ["collar", "placket", "wear", "fit"] as const) {
+    const spec = makeSpec();
+    spec.shirt.sleeve = "half_sleeve";
+    spec.shirt.cuff = "french_double_cuff";
+    spec.pant.type = "wide_leg_relaxed_drape";
+    spec.pant.fit = "slim_tapered";
+    (spec.shirt as unknown as Record<string, string>)[field] = "retired_legacy_option";
+    const before = JSON.stringify(spec);
+    assert.deepEqual(styleDirectorConstructionSuggestions(spec).map(x =>
+      [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]],
+      `unknown shirt.${field} must not suppress independent trouser advice`);
+    assert.equal(JSON.stringify(spec), before, "saved design must remain unchanged");
+  }
+  const valid = makeSpec();
+  valid.shirt.sleeve = "half_sleeve";
+  valid.shirt.cuff = "french_double_cuff";
+  assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
+});
