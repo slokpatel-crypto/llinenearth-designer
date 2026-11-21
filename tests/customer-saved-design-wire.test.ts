@@ -77,3 +77,17 @@ test("unserializable database payloads fail closed without throwing", () => {
     assert.equal(parseCustomerSavedDesignRow({...row, payload}), null);
   }
 });
+
+
+test("hostile getters and proxies cannot crash saved-design validation", () => {
+  const getter = {...valid(), recipe: {...valid().recipe, brief: Object.defineProperty({}, "occasion", {enumerable: true, get() { throw new Error("getter"); }})}};
+  const proxy = new Proxy(valid(), {ownKeys() { throw new Error("proxy"); }});
+  for (const payload of [getter, proxy]) {
+    assert.doesNotThrow(() => parseCustomerSavedDesignWrite(payload, 400));
+    assert.equal(parseCustomerSavedDesignWrite(payload, 400), null);
+  }
+  const row = {payload: valid(), updated_at: "2026-11-20T00:00:00Z"};
+  const hostileRow = new Proxy(row, {ownKeys() { throw new Error("proxy row"); }});
+  assert.doesNotThrow(() => parseCustomerSavedDesignRow(hostileRow));
+  assert.equal(parseCustomerSavedDesignRow(hostileRow), null);
+});
