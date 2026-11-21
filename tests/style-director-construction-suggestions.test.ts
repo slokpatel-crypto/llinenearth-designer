@@ -234,3 +234,32 @@ test("working conflict snapshot preserves a deterministic frozen multi-repair se
   assert.ok(styleDirectorConstructionIssues(candidate).length <
     styleDirectorConstructionIssues(locked).length);
 });
+
+test("unknown saved garment types cannot certify a construction alternative", () => {
+  const retiredPant = makeSpec();
+  retiredPant.pant.type = "retired_trouser_type" as StyleSpecV2["pant"]["type"];
+  retiredPant.pant.fit = "slim_tapered";
+  retiredPant.pant.pleat = "single_pleat_forward";
+  retiredPant.pant.hem = "plain_hem";
+  assert.deepEqual(styleDirectorConstructionSuggestions(retiredPant), [],
+    "retired trouser silhouettes must not receive canonical component guesses");
+
+  const absentPant = makeSpec();
+  absentPant.pant.type = "wide_leg_relaxed_drape";
+  absentPant.pant.fit = "slim_tapered";
+  delete (absentPant.pant as Partial<StyleSpecV2["pant"]>).type;
+  assert.deepEqual(styleDirectorConstructionSuggestions(absentPant), []);
+
+  const validPant = makeSpec();
+  validPant.pant.type = "wide_leg_relaxed_drape";
+  validPant.pant.fit = "slim_tapered";
+  assert.deepEqual(styleDirectorConstructionSuggestions(validPant).map(x =>
+    [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]],
+    "valid saved type retains the existing recommendation");
+
+  const retiredShirt = makeSpec();
+  retiredShirt.shirt.type = "retired_shirt_type" as StyleSpecV2["shirt"]["type"];
+  retiredShirt.shirt.sleeve = "half_sleeve";
+  retiredShirt.shirt.cuff = "french_double_cuff";
+  assert.deepEqual(styleDirectorConstructionSuggestions(retiredShirt), []);
+});
