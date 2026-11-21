@@ -106,3 +106,19 @@ test("single-design cloud recovery enforces exact ID, authentication and private
   }), /Invalid design ID/);
   assert.equal(called, false);
 });
+
+test("cloud responses enforce declared and streamed size limits before decoding", async () => {
+  const tooLarge = " ".repeat(25 * 1024 * 1024 + 1);
+  await assert.rejects(() => listCloudDesigns(async () =>
+    new Response('{"designs":[]}', {headers: {
+      "content-type": "application/json", "content-length": String(25 * 1024 * 1024 + 1),
+    }})), /Invalid cloud/);
+  await assert.rejects(() => getCloudDesign(saved.id, async () =>
+    new Response('{"design":null}', {headers: {
+      "content-type": "application/json", "content-length": "not-a-number",
+    }})), /Invalid cloud/);
+  await assert.rejects(() => listCloudDesigns(async () =>
+    new Response(tooLarge, {headers: {"content-type": "application/json"}})), /Invalid cloud/);
+  await assert.rejects(() => deleteCloudDesign(saved.id, async () =>
+    new Response("{", {headers: {"content-type": "application/json"}})), /Invalid cloud/);
+});
