@@ -536,3 +536,27 @@ test("retired optional shirt construction IDs block unsupported cuff advice", ()
   assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
     [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
 });
+
+test("retired shirt button and pocket IDs withhold cuff changes but preserve independent pant advice", () => {
+  for (const field of ["button", "pocket"] as const) {
+    const spec = makeSpec();
+    spec.shirt.sleeve = "half_sleeve";
+    spec.shirt.cuff = "french_double_cuff";
+    spec.pant.type = "wide_leg_relaxed_drape";
+    spec.pant.fit = "slim_tapered";
+    (spec.shirt as unknown as Record<string, string>)[field] = "retired_legacy_option";
+    const before = JSON.stringify(spec);
+    Object.freeze(spec.shirt);
+    Object.freeze(spec.pant);
+    Object.freeze(spec);
+    assert.deepEqual(styleDirectorConstructionSuggestions(spec).map(x =>
+      [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]],
+      `retired shirt.${field} cannot certify a cuff construction alternative`);
+    assert.equal(JSON.stringify(spec), before);
+  }
+  const valid = makeSpec();
+  valid.shirt.sleeve = "half_sleeve";
+  valid.shirt.cuff = "french_double_cuff";
+  assert.deepEqual(styleDirectorConstructionSuggestions(valid).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
+});
