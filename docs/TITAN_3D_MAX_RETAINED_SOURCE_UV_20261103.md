@@ -1434,3 +1434,25 @@ artifact, but this attempt is failed and cannot be credited. The corrected
 assertion reads `offset["trialSegments"]`; its focused regression now requires
 that exact enclosing-report reference. A fresh exact-head pinned run is
 required.
+
+### Verified final code-head result
+
+The corrected draft code head is
+`f64982c1580622b81ca479433447b2f4d4fe1fff` on PR #897. All matching-head
+workflows passed: Full CI #44617555499, Non-3D QA #44617555471, pinned native
+candidate rejection #44617555465, native source preservation #44617555477,
+native collision #44617555464 and native authoring inputs #44617555482.
+Artifact `titan-native-candidate-evidence` #14576905851 has digest
+`sha256:aca0f7b97d7900059ff4fd8b14a200111b184331977b3c2f4ba0e9aa434223dc`.
+
+The pinned Blender 4.5.14 artifact reproduces the local face-ring result:
+introduced pair 167/167 maps to global authentic faces 167/1492, both at ring
+zero from the altered-face set, with 1/3/5 faces in local rings zero/one/two.
+It records complete-boundary nearest edge `[216,1353]` at 16.575210mm and
+target-moved nearest edge `[1580,1581]` at 31.007934mm. The candidate remains
+explicitly rejected and unretained. The next independently verifiable slice is
+to record barycentric intersection provenance and body-normal displacement on
+authentic faces 167/1492 for control versus +9mm, without inventing a safe
+clearance threshold. Native drape, approved model measurements/source likeness,
+physical fabric evidence, four-angle owner approval and tailor approval remain
+hard gates. **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING.**
