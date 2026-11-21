@@ -31,6 +31,11 @@ test("cloud list restores validated versioned recipe without reading browser sto
   assert.deepEqual(await listCloudDesigns(async () => response({designs: [row]})), [saved]);
   await assert.rejects(() => listCloudDesigns(async () =>
     response({designs: [{...row, owner_id: "private"}]})), /Invalid cloud/);
+  // Reject private metadata accidentally appended by an upstream service.
+  await assert.rejects(() => listCloudDesigns(async () =>
+    response({designs: [row], owner_id: "alice"})), /Invalid cloud/);
+  await assert.rejects(() => listCloudDesigns(async () =>
+    response({designs: [], sessionToken: "secret"})), /Invalid cloud/);
 });
 
 test("cloud operations reject missing authentication and forged acknowledgements", async () => {
