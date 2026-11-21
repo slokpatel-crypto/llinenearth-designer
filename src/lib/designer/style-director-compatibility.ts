@@ -1942,7 +1942,7 @@ export function styleDirectorConstructionSuggestions(
   spec: Pick<StyleSpecV2, "shirt" | "pant">,
   occasion?: OccasionTier,
 ): DirectorConstructionSuggestion[] {
-  // Saved construction data is JSON-shaped. Prototype-backed records can
+  // Malformed legacy payloads may be null or non-record values at runtime.\n  // Fail closed before reading any saved garment fields.\n  if (spec === null || typeof spec !== "object") return [];\n  // Saved construction data is JSON-shaped. Prototype-backed records can
   // execute inherited getters during issue evaluation, before any proposed
   // garment copy is checked. Abstain rather than execute those accessors.
   for (const garment of ["shirt", "pant"] as const) {
