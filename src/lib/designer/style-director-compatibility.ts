@@ -1980,6 +1980,11 @@ export function styleDirectorConstructionSuggestions(
       return typeof value !== "string" ||
         !optionsFor(group).some(option => option.id === value);
     })) continue;
+    // Spreading a garment with accessor-backed ancillary fields would invoke
+    // user-controlled getters while assembling an advisory candidate. Refuse
+    // that garment entirely; never execute accessors to produce a suggestion.
+    if (Object.values(Object.getOwnPropertyDescriptors(suggestedSpec[garment]))
+      .some(descriptor => !Object.hasOwn(descriptor, "value"))) continue;
     const savedId = styleDirectorLockedOptionValue(spec[garment], key);
     const catalog = optionsFor(optionGroup);
     if (typeof savedId !== "string" ||
