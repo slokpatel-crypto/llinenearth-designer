@@ -31,6 +31,11 @@ test("cloud list restores validated versioned recipe without reading browser sto
   assert.deepEqual(await listCloudDesigns(async () => response({designs: [row]})), [saved]);
   await assert.rejects(() => listCloudDesigns(async () =>
     response({designs: [{...row, owner_id: "private"}]})), /Invalid cloud/);
+  // Reject private metadata accidentally appended by an upstream service.
+  await assert.rejects(() => listCloudDesigns(async () =>
+    response({designs: [row], owner_id: "alice"})), /Invalid cloud/);
+  await assert.rejects(() => listCloudDesigns(async () =>
+    response({designs: [], sessionToken: "secret"})), /Invalid cloud/);
 });
 
 test("cloud operations reject missing authentication and forged acknowledgements", async () => {
@@ -105,4 +110,34 @@ test("single-design cloud recovery enforces exact ID, authentication and private
     return response({design: row});
   }), /Invalid design ID/);
   assert.equal(called, false);
+});
+
+test("cloud responses enforce declared and streamed size limits before decoding", async () => {
+  const tooLarge = " ".repeat(25 * 1024 * 1024 + 1);
+  await assert.rejects(() => listCloudDesigns(async () =>
+    new Response('{"designs":[]}', {headers: {
+      "content-type": "application/json", "content-length": String(25 * 1024 * 1024 + 1),
+    }})), /Invalid cloud/);
+  await assert.rejects(() => getCloudDesign(saved.id, async () =>
+    new Response('{"design":null}', {headers: {
+      "content-type": "application/json", "content-length": "not-a-number",
+    }})), /Invalid cloud/);
+  await assert.rejects(() => listCloudDesigns(async () =>
+    new Response(tooLarge, {headers: {"content-type": "application/json"}})), /Invalid cloud/);
+  await assert.rejects(() => deleteCloudDesign(saved.id, async () =>
+    new Response("{", {headers: {"content-type": "application/json"}})), /Invalid cloud/);
+});
+
+test("valid numeric Content-Length permits bounded cloud save, list, recovery and delete", async () => {
+  const withLength = (body: unknown) => {
+    const encoded = JSON.stringify(body);
+    return new Response(encoded, { headers: {
+      "content-type": "application/json",
+      "content-length": String(new TextEncoder().encode(encoded).byteLength),
+    } });
+  };
+  await saveCloudDesign(saved, async () => withLength({saved: true, designId: saved.id}));
+  assert.deepEqual(await listCloudDesigns(async () => withLength({designs: [row]})), [saved]);
+  assert.deepEqual(await getCloudDesign(saved.id, async () => withLength({design: row})), saved);
+  assert.equal(await deleteCloudDesign(saved.id, async () => withLength({deleted: true})), true);
 });

@@ -9,5 +9,5 @@ test("cloud actions use a synchronous in-flight mutex and release it after error
   assert.match(panel, /const inFlight = useRef\(false\)/);
   assert.match(panel, /if \(inFlight\.current\) return;\s*inFlight\.current = true;\s*setBusy\(true\)/);
   assert.match(panel, /finally \{ inFlight\.current = false; setBusy\(false\); \}/);
-  assert.match(panel, /void run\(async \(\) => \{/);
+  // Actions now accept an owner-verification callback; retain the synchronous mutex gate.\n  assert.match(panel, /void run\(async \(assertOwner\) => \{/);\n  assert.match(panel, /await assertOwner\(\)/);
 });

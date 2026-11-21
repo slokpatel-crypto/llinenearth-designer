@@ -46,6 +46,7 @@ export function parseCustomerSavedDesignWrite(
   value: unknown,
   serializedBytes: number,
 ): CustomerSavedDesignWrite | null {
+  try {
   if (!Number.isSafeInteger(serializedBytes) ||
       serializedBytes < 1 || serializedBytes > CUSTOMER_SAVED_DESIGN_MAX_BYTES ||
       !record(value)) return null;
@@ -63,6 +64,10 @@ export function parseCustomerSavedDesignWrite(
   if (!record(brief) || !record(version) || !record(renderSet) ||
       !validId(version.id) || hasUnsafeClaims(value.recipe)) return null;
   return value as CustomerSavedDesignWrite;
+  } catch {
+    // Untrusted in-memory objects can contain throwing getters/proxies.
+    return null;
+  }
 }
 
 /** Validate database RPC rows before returning private records to a browser.
@@ -73,14 +78,28 @@ export function parseCustomerSavedDesignRow(value: unknown): {
   updated_at: string;
   design_id?: string;
 } | null {
+  try {
   if (!record(value) || Object.keys(value).some(key =>
     !["payload", "updated_at", "design_id"].includes(key)) ||
     typeof value.updated_at !== "string" ||
     !Number.isFinite(Date.parse(value.updated_at)) ||
     !record(value.payload)) return null;
-  const payload = parseCustomerSavedDesignWrite(
-    value.payload, new TextEncoder().encode(JSON.stringify(value.payload)).length);
+  // RPC rows are untrusted input. JSON serialization can throw for cyclic
+  // objects, BigInt or hostile toJSON methods; reject instead of crashing
+  // the entire account listing/recovery path.
+  let serializedBytes: number;
+  try {
+    const serialized = JSON.stringify(value.payload);
+    if (typeof serialized !== "string") return null;
+    serializedBytes = new TextEncoder().encode(serialized).length;
+  } catch {
+    return null;
+  }
+  const payload = parseCustomerSavedDesignWrite(value.payload, serializedBytes);
   if (!payload || (value.design_id !== undefined &&
     value.design_id !== payload.designId)) return null;
   return value as {payload: CustomerSavedDesignWrite; updated_at: string; design_id?: string};
+  } catch {
+    return null;
+  }
 }

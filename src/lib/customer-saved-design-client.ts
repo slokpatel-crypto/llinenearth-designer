@@ -25,7 +25,33 @@ async function json(response: Response): Promise<unknown> {
     ? "Sign in to access cloud saved designs." : "Cloud saved designs unavailable.");
   if (response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json")
     throw new Error("Invalid cloud saved-design response.");
-  return response.json();
+  // At most 24 stored recipes (1 MiB each) plus JSON framing. Never let a
+  // compromised endpoint buffer an unbounded private response in the browser.
+  const limit = 25 * 1024 * 1024;
+  const declared = response.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > limit))
+    throw new Error("Invalid cloud saved-design response.");
+  if (!response.body) throw new Error("Invalid cloud saved-design response.");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > limit) {
+        await reader.cancel();
+        throw new Error("Invalid cloud saved-design response.");
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try { return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); }
+  catch { throw new Error("Invalid cloud saved-design response."); }
 }
 
 export async function saveCloudDesign(saved: SavedDesign, transport: SavedDesignTransport = fetch): Promise<void> {
@@ -45,6 +71,7 @@ export async function saveCloudDesign(saved: SavedDesign, transport: SavedDesign
 export async function listCloudDesigns(transport: SavedDesignTransport = fetch): Promise<SavedDesign[]> {
   const result = await json(await transport(endpoint, { credentials: "same-origin", cache: "no-store" }));
   if (!result || typeof result !== "object" || Array.isArray(result) ||
+    Object.keys(result).length !== 1 || !Object.prototype.hasOwnProperty.call(result, "designs") ||
     !Array.isArray((result as {designs?: unknown}).designs) ||
     (result as {designs: unknown[]}).designs.length > 24)
     throw new Error("Invalid cloud saved-design response.");
@@ -81,4 +108,59 @@ export async function getCloudDesign(id: string, transport: SavedDesignTransport
   const design = decodeRow((result as {design: unknown}).design);
   if (design.id !== id) throw new Error("Invalid cloud saved-design response.");
   return design;
+}
+
+
+/**
+ * Reconfirm the server-authenticated account before exposing private cloud
+ * records or importing them into this device. The owner id is read only from
+ * the server-side signed session; it is never sent as a write owner claim.
+ */
+export async function currentCloudCustomerId(
+  transport: SavedDesignTransport = fetch,
+): Promise<string> {
+  const response = await transport("/api/customer-auth/session", {
+    credentials: "same-origin", cache: "no-store",
+  });
+  if (!response.ok ||
+      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
+    throw new Error("Customer session could not be verified. Reload cloud designs after signing in.");
+  }
+  // Session verification is a security boundary. Do not buffer an unbounded
+  // upstream response or trust Content-Length as a substitute for streamed size.
+  const limit = 16 * 1024;
+  const declared = response.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > limit))
+    throw new Error("Customer session could not be verified.");
+  let body: unknown;
+  try {
+    if (!response.body) throw new Error("Missing session response.");
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let length = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        length += value.byteLength;
+        if (length > limit) throw new Error("Oversized session response.");
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    body = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch { throw new Error("Customer session could not be verified."); }
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).length !== 1 || !Object.prototype.hasOwnProperty.call(body, "customer")) {
+    throw new Error("Invalid customer session response.");
+  }
+  const customer = (body as { customer: unknown }).customer;
+  if (!customer || typeof customer !== "object" || Array.isArray(customer) ||
+      typeof (customer as { id?: unknown }).id !== "string" ||
+      !/^[A-Za-z0-9_-]{1,160}$/.test((customer as { id: string }).id)) {
+    throw new Error("Sign in to recover cloud designs.");
+  }
+  return (customer as { id: string }).id;
 }

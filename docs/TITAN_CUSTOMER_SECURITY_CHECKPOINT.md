@@ -322,3 +322,155 @@ Prior parent matching-head evidence: Full CI #44657065416, Non-3D #44657065342 a
 - **Criterion:** a signed-in customer who explicitly recovers a cloud record can export the versioned brief, recipe and render-set as JSON without changing any browser-local drafts or silently importing a design. The exported JSON is a portable recovery artifact, **not** an operational Designer import or a production lock.
 - **Parent exact-head CI:** CI #44757568825 SUCCESS, Non-3D #44757568840 SUCCESS, disposable PostgreSQL #44757568919 SUCCESS at `a13637bfaddc93d7170c2c6b48205ca975789950`. These do not validate the new commits. Source regression was added but **not executed locally**; matching-head CI, download interaction and mobile/desktop browser QA PENDING.
 - **Next:** build and verify a version-validated explicit Designer import path from recovered cloud recipes with real two-session browser tests. Customer/device pilot, staging, independent security, physical stock/fabric/tailor/native and T1–T6/J1–J6 release gates remain PENDING/BLOCKED. No main merge, Vercel deploy, live migration, live stock changes or paid AI.
+
+
+## 2026-11-20 — isolated cloud-import preservation contract (pending CI)
+- Parent SHA: `5d24018ad826af78e4190a43df7712efe7c70f62` (customer-security PR #863); isolated branch `work/titan-cloud-import-preservation-20261120`.
+- Implementation SHA: `2fd2949c985165421606b789151286fabf0ce204`; regression SHA: `509332ce37af5b9dc8c11bd0b1e2842d7198bad3`.
+- Acceptance slice: explicit versioned cloud export parsing rejects unsupported versions, extra/ownership fields and oversized recipes; import preserves every existing local record, resolves ID collisions, and refuses unreadable/full stores without mutation.
+- Evidence: source regression added at `tests/cloud-design-import.test.ts`; **NOT RUN**. Matching-head CI, browser QA, two-account security review and end-to-end UI wiring **PENDING**. This helper is not exposed to customers yet.
+- No live database, deployment, stock, or physical approval. Next: run exact-head tests and integrate explicit consent UI after verification; verify import identity collision behavior and two-session browser recovery.
+
+
+## 2026-11-20 — Opt-in cloud-to-browser recovery UI, tested-source milestone (verification pending)
+- **Original parent:** `c2a3684645fb5edb18ea0f244a6f0c287e92ea7f` (draft PR #1004), based on customer-security PR #863 `5d24018ad826af78e4190a43df7712efe7c70f62`.
+- **Commits:** validator/runtime-import correction `fb31d60bfe2bd9f18dfd2551f483e1a0208ef4d6`; real Node-regression fixture `c56784a98a85d0d93ffe99dd7bf9ecb7d0e069d0`; customer import UI `8dddc76687c6075ef316303ee3b73235a64cac5c`; saved-card state synchronization `2411e862e0a3ecaacd80fb919a0e0d244c1b364d`; explicit-consent source regression `6046c51ba719b810e02392c2c12a0e823607f05a`; architecture decision `55493df065d97fb0e7a649436a378c17315dc635`.
+- **Criterion:** owner-scoped fetched cloud design is explicitly confirmed before import; importer validates schema and presentation-critical recipe fields, keeps existing browser entries including unknown formats, resolves local ID collisions without changing version hashes or model ID, fails closed on unreadable/full stores, and refreshes the Saved Designs UI after success. No automatic import during list/recovery/export or cloud mutation.
+- **Observed first-head failures:** at `c2a3684645fb5edb18ea0f244a6f0c287e92ea7f`, Full CI #44789109508 **FAILED** and Non-3D #44789109511 **FAILED** because the new test imported TypeScript without a `.ts` extension (Node `ERR_MODULE_NOT_FOUND`). The test and pure helper imports were corrected; this is not evidence of successful tests.
+- **Later matching-head evidence at `6046c51ba719b810e02392c2c12a0e823607f05a`:** CI #44790121171 QUEUED and Non-3D #44790121372 QUEUED when inspected. The current later docs/result SHA needs independent matching-head results; targeted tests, browser QA at 390/768/1440, two real authenticated browsers/accounts, security review, disposable DB and build/engine/preview/release checks are NOT YET proven for the current head.
+- **Blockers:** cloud feature staging/authenticated two-browser recovery, identity-switch privacy, customer device acceptance, stock provenance, tailoring signoff and native 3D measured evidence remain PENDING/BLOCKED. T1–T6/J1–J6 human/physical gates remain PENDING. No main merge, Vercel deployment, paid AI or live database migration.
+- **Next 30–40-minute slice:** inspect new-head CI/test failures and fix defects; verify an owner-scoped record recovers with consent on a fresh browser without altering pre-existing local drafts, then test account switching/negative cases.
+
+
+## 2026-11-20 — Cloud account-switch private-record scrub (isolated PR #1004)
+- **Parent:** `1d126437b39fbd52d942cfb724779de6d556e374`, from the prior explicit cloud-to-local recovery milestone.
+- **Code:** signed-session owner lookup `3547627d567aa1c465e0f8ec69b837b3a1b016bf`; UI focus/visibility scrub plus pre/post-action identity checks `8b45b1c6d7d224a6d064093820b7291664c3fe02`; existing cloud-delete owner-publish assertion `00cc358bdd4bf4c6f987abb1dcd174cd104f65d5`; new negative regressions `e31ecf5fa46d66b57af90520b22ffec91ded2593` and `d13487d6924698a51d7ba5513c94a9359eefe221`; architecture record `90f0d7816389942e7180efa664d05cb2dbc672d8`.
+- **Acceptance slice:** cloud records are cleared when a tab returns from background; list, detail recovery, save, delete, export and local import require a signed-in identity and after-action same-owner recheck; stale requests cannot publish old account data following visibility invalidation. All local drafts are preserved, with no production writes outside existing authenticated cloud API actions.
+- **Observed pre-milestone CI:** `1d126437b39fbd52d942cfb724779de6d556e374` CI #44790385554 and Non-3D #44790385496 were cancelled after newer branch commits; no complete acceptance inference. New tests source + synthetic transport checks are COMMITTED but not executed locally. CI #44792117468 and Non-3D #44792117474 were QUEUED at intermediate `d13487d6924698a51d7ba5513c94a9359eefe221` before documentation commits; they are NOT evidence for this checkpoint head.
+- **Remaining:** matching-head full CI/non-3D/browser/release/database evidence, real two-account session-switch browser verification, independent security review, staging revocation tests, measured supplier stock/fabric, tailor, native Blender/device/customer pilot, T1–T6/J1–J6 physical owner gates all PENDING/BLOCKED.
+- **Next:** inspect final matching-head CI for failures; add server-verified expected-owner protection if proven necessary for in-flight mutation safety; run actual two-account browser checks before main intake. No main merge, Vercel deployment, paid AI or live DB migration.
+
+
+### 2026-11-20 — Account-switch confirmation-race follow-up (PR #1004; PENDING CI)
+- **Prior checkpoint head:** `263649711f5a8171ab7a736ae6478d15de029f78`.
+- **Fix:** `b6c34f6597d4c238594329224c87d2976979d393` binds the displayed selected recipe to the owner who fetched it. A focus or visibility scrub now invalidates that selection, even when a browser confirmation dialog retains an old event closure. Export and local import refuse invalidated selections until explicit owner-scoped recovery is repeated.
+- **Regression:** `7e655114ab06119344567f3ce3d3ecf0b4a77463`, corrected Node regex test `16fabc00b512a3aa84bc89f60ddef777bf4074b9`; cloud delete revalidation assertion `8b896c71cbfd79ba7ef11f83a2bee5dcc593d838`; selected-owner scrub assertion `3d21307164bbd72f9923f7fa5fe5f80d425cef8e`.
+- **Evidence:** intermediate head `d13487d6924698a51d7ba5513c94a9359eefe221` Full CI #44792117468 and Non-3D #44792117474 CANCELLED after subsequent commits; those do not count as pass. At `3d21307164bbd72f9923f7fa5fe5f80d425cef8e`, Full CI #44792786362 and Non-3D #44792786307 were PENDING. No tests were run locally; final checkpoint-head CI/browser/full release gates still PENDING.
+- **Next:** inspect matching-head test/HTTP/browser results, run real two-account tab and confirmation interactions; verify failure paths and staging session revocation. Independent physical stock, tailor, device, native, security, pilot and T1–T6/J1–J6 human gates stay BLOCKED/PENDING. No main merge or deployment.
+
+
+### 2026-11-20 — Confirmation focus-race correction (PR #1004)
+- **Parent checkpoint:** `318f5863aedbc1c23a19c7d053d1082d2c801b05`.
+- **UI fix:** `000b9bbe29c1b6b76088b6865633cb6e5c5d55ab` moves the cloud delete and local import confirmation dialogs *inside* the serialized owner-checked action. Tab focus from a browser-native confirmation no longer destroys the selected design while that action is active. Identity is rechecked **after** confirmation and before any delete or import effect; selectedOwner is also rechecked for export/import.
+- **Regression:** `ecc08aef2160b947b2ab8ef39d435b5ec2a523b6` adds focus-dialog and post-consent owner assertions; source tests remain distinct from actual browser acceptance.
+- **Verification:** matching-result-head CI and Non-3D were not yet observed at this checkpoint. Prior intermediate workflow runs are superseded by these commits. No local execution, signed-in real customer browser session, staging proof or independent security acceptance is claimed. Final 390/768/1440 QA and production release gates remain PENDING/BLOCKED.
+- **Next:** inspect exact-head workflow results; exercise native confirm dialogs with two authenticated users and cross-tab account switches in real browsers; keep production/intake merge blocked until reviewed and verified. No Vercel deploy or production DB changes.
+
+
+## 2026-11-21 — cloud action regression repaired after exact-head failure
+- **Parent SHA:** `fa375c909c2b58f21c57589a064e194466b601ad`; **test-fix SHA:** `63b191c23632dc5815aadd2f837948f9c9c8f44b` on draft PR #1004.
+- **Affected criterion:** cloud saved-design actions remain synchronously single-flight, with owner verification before/after authenticated operations. The earlier source test assumed `void run(async () => {`, but the actual identity-bound action contract is `void run(async (assertOwner) => {`. Updated the regression to assert the current owner-verified invocation and `await assertOwner()` rather than weakening the mutex checks.
+- **Observed parent CI evidence:** at `fa375c909c2b58f21c57589a064e194466b601ad`, Full CI run [44793254895](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44793254895) FAILED (npm test: 928 passed, 1 failed, `tests/cloud-actions-single-flight.test.ts` stale invocation assertion); Non-3D run [44793254849](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44793254849) FAILED. Disposable PostgreSQL stock and customer security jobs in Full CI passed, but do not certify the branch.
+- **Verification of new test-fix head:** exact-head CI/Non-3D workflow results not yet available at checkpoint writing; local npm tests, build and browser QA not run. This is a committed source/test alignment, **not** a production acceptance claim.
+- **Blockers:** real two-session browser account switching, mobile/desktop QA, independent security review, staging and customer pilot; stock, physical tailoring and 3D acceptance remain PENDING/BLOCKED. No main merge, Vercel deploy, paid AI or live-data mutation.
+- **Next slice:** check matching-head workflows and fix any remaining failure; run 390/768/1440 browser recovery/privacy checks and two-account owner-scoped tests before considering a dependency-isolated main intake.
+
+
+## 2026-11-21 — exact-head CI verification after cloud-action regression repair
+- **Verified code/checkpoint parent:** `cbe3ee3187d29203ca7d2be65d23d68520266038` (test fix `63b191c23632dc5815aadd2f837948f9c9c8f44b`).
+- **Affected criterion:** customer cloud recovery action regression, synchronous single-flight and owner revalidation. GitHub Actions matching this exact SHA: Full CI [#44831824327](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44831824327) **SUCCESS**; Deep Engine Non-3D QA [#44831824365](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44831824365) **SUCCESS**. These results prove only the checks executed by those workflows, not independent real-account browser or release approval.
+- **Integration blocker:** branch comparison with live main: **265 ahead, 33 behind, 68 changed files**; cannot merge the entire customer-security stack as an isolated section. Main `vercel.json` retains `git.deploymentEnabled=false`.
+- **Remaining:** independent two-account signed-in browser verification at 390/768/1440, confirmation/focus race and cross-tab session-switch checks, security review, staging revocation, customer pilot, verified physical stock/fabric, tailoring and native 3D evidence, all owner release gates **PENDING/BLOCKED**. No live DB mutation, Vercel deploy or main merge.
+- **Next independent engineering slice:** isolate the cloud import/recovery changes and required dependencies against live main, validate exact-head CI, browser QA and disposable database tests before considering a guarded main intake. This documentation-only checkpoint commit requires its own exact-head workflows; prior green results apply to its parent code SHA only.
+
+
+## 2026-11-21 — matching-head CI verified for cloud recovery checkpoint
+- **Parent SHA:** `d9b88e94ede431e2154d405abdccd7fc0678eeeb` (PR #1004). Branch comparison against that SHA was **identical** when checked; no newer compatible commits were overwritten.
+- **Affected criterion:** automated cloud recovery/security regression and Non-3D verification at the exact checkpoint head. GitHub Actions CI [#44839168231](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44839168231) **SUCCESS** and Deep Engine Non-3D QA [#44839168302](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44839168302) **SUCCESS**, both queried by exact parent commit SHA. This is automated workflow evidence, not independently executed real-account browser QA.
+- **Remaining blockers:** branch is 266 commits ahead / 33 behind main; no dependency-complete intake verified. Real two-account authenticated browser sessions, 390/768/1440 focus/confirmation races, staging security and revocation, physical fabric/stock, tailoring, device/Blender, customer pilot and T1–T6/J1–J6 human acceptance remain **PENDING/BLOCKED**. No production readiness or release approval.
+- **Next isolated slice:** build a minimal cloud-import intake from current main, enumerate required dependencies and run exact-head checks plus authenticated cross-account browser tests before any guarded merge. No Vercel deployment, live database mutation, paid AI or stock changes.
+- **Checkpoint-only result commit:** this append creates a new documentation SHA, whose own matching-head CI must be checked separately.
+
+
+## 2026-11-21 — exact-head CI confirmation at `ff75f45b0a1d53bd21a7b8883bdd6023b8223f7c`
+- **Parent/head:** `ff75f45b0a1d53bd21a7b8883bdd6023b8223f7c` (PR #1004; branch unchanged at read). **Criterion:** automated customer cloud recovery/security and Non-3D QA checks at the exact documentation head.
+- **Evidence:** [Full CI #44846604814](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44846604814) **SUCCESS** and [Deep Engine Non-3D QA #44846604816](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44846604816) **SUCCESS**; both returned for this exact SHA. No independent local/browser tests were run in this milestone.
+- **Review:** cloud UI still uses owner revalidation before/after selected recovery, delete and local import; this source inspection does not substitute for authenticated two-account browser and staging revocation evidence.
+- **Blocked:** no dependency-isolated main intake, independent two-account session-switch browser QA at 390/768/1440, security review, physical stock/tailor/device/Blender/customer pilot acceptance. All corresponding T1–T6/J1–J6 human gates remain PENDING/BLOCKED. No main merge, live mutation, provider charges or Vercel deployment.
+- **Next slice:** create a minimal main-based cloud recovery intake with required dependencies, then test exact-head CI, security/disposable database and real two-account browser confirmation/focus races before considering main. This checkpoint-only result commit itself needs matching-head CI.
+
+
+## 2026-11-21 — Bounded cloud session verification response (pending exact-head CI)
+
+Parent application SHA: `5d8a41a44849e2d1364deb5255e16507e394b6b4` (prior matching-head CI and Non-3D success). Source change: `f5ce71751ad5ec4180ab982e924ef82ad47047e0`; correction: `1315fe961743b48c64a6945fa407f5c8621b866e`; regression: `facab6ed4db693c5f626b2cf74c58184ff319e2a`.
+
+Affected customer security criterion: session recheck must not consume unbounded upstream JSON. Added streamed 16 KiB cap, Content-Length preflight, strict UTF-8/JSON parsing and synthetic tests for normal, declared-oversized, streamed-oversized, malformed and missing-owner responses. **Not yet verified**: exact-head full CI, Non-3D/browser, security/release, disposable PostgreSQL as applicable. No production deployment or main integration.
+
+Blockers: branch remains significantly divergent from main; customer cloud endpoint and wire dependencies are not on main, so an isolated dependency-complete intake is still required. Real two-account staging/browser acceptance, migration activation, owner and physical release evidence remain pending. Next action: inspect matching-head CI for this checkpoint commit; fix failures before any intake or merge. Do not call this production-ready.
+
+
+## 2026-11-21 — Exact-head verification of bounded session response
+
+Verified branch head `7dc14264255610589287d76207b1e63caea5eee6` (identical to live branch at verification). Full CI run #44862833523 and Deep Engine Non-3D QA run #44862833592 both completed SUCCESS for that exact SHA. This verifies the committed bounded-session-response regression within those workflow suites; it does not establish real staging owner isolation or production activation. Parent/result: parent `7dc14264255610589287d76207b1e63caea5eee6`; this documentation-only checkpoint commit's resulting SHA is recorded by GitHub and requires fresh matching-head checks before any integration.
+
+Affected criterion: customer session revalidation HTTP response size/parse fail-closed behavior (automated verification only). Remaining blockers: isolated dependency-complete main intake, authenticated Alice/Bob browser privacy/confirmation races at 390/768/1440, staging session and SQL permission tests, independent security review, stock, tailoring, device, native geometry and human pilot gates. T1–T6/J1–J6 physical/human gates remain PENDING/BLOCKED. No main merge, deployment or live-data mutation. Next meaningful engineering slice: implement and test isolated main-based recovery intake; avoid further documentation-only commits unless new evidence or a code milestone exists.
+
+
+## 2026-11-21 — Cloud import version-reference fail-closed regression
+
+- Parent before source edit: `8cab2e002d18ae11d4a44ad3fd8cef1dbd0e1948` (last recorded checkpoint; branch had no intervening application edit observed during this slice). Source commit `4c9be8b056bab2c9bd437914f38c4af9e30aca79`; regression commit `e4403c50ddf7fdd2cb95f1354af84b0eb4e7c03c`.
+- Criterion: customer recovery must reject present-but-malformed version linkage rather than bypass comparison. Optional legacy linkage remains optional. Added five negative assertions for numeric/null render-set version/hash and numeric recipe hash; rejected imports must leave existing browser bytes unchanged.
+- Evidence: committed source and Node regression assertions. **NOT YET VERIFIED**: no matching-head CI, local Node test, browser or disposable-DB result for `e4403c50ddf7fdd2cb95f1354af84b0eb4e7c03c` at checkpoint time. Earlier CI successes apply only to their own exact SHA.
+- Blockers: broad branch divergence from main; authenticated two-account browser/staging proof; feature-flagged database activation and independent physical/customer/operator gates. No main merge or deployment.
+- Next: verify exact-head Full CI and Non-3D QA, then isolate a dependency-complete main-based intake and perform authenticated account-switch privacy checks at 390/768/1440.
+
+
+## 2026-11-21 — bounded cloud saved-design response parsing
+
+Parent checkpoint head: `1e68874af69c4e4183a95000b034093dd4bad032` (Full CI #44872939638 SUCCESS; Non-3D #44872939642 SUCCESS at that parent).
+Code commit: `2ad2263ae1b8708f69a820a1e7426ff50acb782f`.
+Regression commit: `3645658707910ec4a7a7bc474cb2c64cadeae90a`.
+Criterion: customer owner-scoped cloud list/get/save/delete responses must not buffer unbounded server data. Added 25 MiB upper bound (24 designs at <=1 MiB each plus framing), preflight Content-Length validation, streamed byte counting and strict UTF-8/JSON decoding. Added declared-size, malformed-length, oversized streamed body and malformed JSON regressions.
+Evidence: code and regression committed, **matching-head CI/Non-3D and browser tests PENDING**. The successful workflows above predate these changes and do not certify them. No local tests executed, no live services or database touched.
+Next slice: verify exact-head workflows; review the 25 MiB ceiling against actual API response limits and two-account browser privacy, then isolate a dependency-complete main intake only after all gates pass. Customer pilot, stock, tailor, native and staging security acceptance remain BLOCKED/PENDING. No Vercel deployment or main merge.
+
+## 2026-11-21 — Numeric Content-Length cloud response regression
+
+Parent SHA: `fae070edf21606269270dcc633a7db47ca64ca17`. Code SHA: `a13598d39d9d66c3d1631568a33162abd1b21b96`. Regression SHA: `6f42cb917ab74a8f74ff041f9fa949ed5960f778`.
+
+Customer cloud save/list/get/delete response parser mistakenly used a literal-backslash digit pattern (`/^\\\\d+$/` in source representation), rejecting all ordinary numeric Content-Length headers. Corrected it to the digit character class and added an end-to-end client regression asserting valid numeric Content-Length across all four operations. Affected criterion: authenticated durable saved-design recovery and account operations must accept valid bounded HTTP responses while rejecting malformed/oversized responses.
+
+Evidence: source inspection and committed regression only. Full CI, Non-3D QA, build and browser/disposable database tests at regression SHA **NOT YET VERIFIED**; do not treat this milestone as technically accepted or main-merge eligible. No real customer records or live database were touched. Next: verify matching-head CI; inspect main-based dependency-complete intake and perform authenticated two-account browser and disposable DB checks. Physical stock, tailor, device and native 3D proof remain PENDING.
+
+
+## 2026-11-21 — Reject unexpected metadata in private cloud listing
+
+Parent SHA: `fdc9dda8a7255174fa279bd28b5c94a8c8441ccf` (matching Full CI #44891428826 SUCCESS and Non-3D QA #44891428848 SUCCESS). Source SHA: `21efcc1265dc4e0a873a94cc2069aa3aa70c454c`. Regression SHA: `f7a8d11f994d6a577b72f3582aeba4df0bb43ccb` (confirmed live branch head at checkpoint preparation).
+
+Criterion: authenticated customer cloud-list response must contain exactly the documented `designs` field, without accidental private account metadata or session credentials. The client now fails closed on any unexpected top-level key; added two negative tests for leaked `owner_id` and `sessionToken` metadata. Existing valid `designs` responses remain supported. No schema migration, new dependency, live data or paid AI.
+
+Evidence: source and regression committed; no local test execution. Matching-head Full CI and Non-3D QA for regression SHA had no runs returned at checkpoint preparation, therefore **PENDING**, as are authenticated two-account browser and disposable PostgreSQL tests. Prior green runs certify the parent only. The historical release checklist/checkpoint and TODO files were absent on this branch; AGENTS.md and DECISIONS.md were inspected. Main divergence before edits: 282 ahead / 33 behind; full-stack merge unsafe. Next: verify matching-head workflows and isolate a dependency-complete main-based intake; stage account-switch and owner-scoped DB verification. T1–T6/J1–J6 human/physical gates remain BLOCKED/PENDING; no main merge, Vercel deployment or live mutation.
+
+## 2026-11-21 — Fail-closed malformed RPC payload serialization
+- **Parent:** `38517af8b6a7e440838ec1b940ec0bd8d1e25540`; **code:** `50f1cd3ef1de49510d4fd674ab12d71fba845209`; **regression:** `6fe6066bd84b9460a23a8e6fafbd0d6a33b41a54`.
+- **Criterion:** untrusted cloud saved-design RPC rows with cyclic objects, BigInt or throwing `toJSON` must return invalid, not crash listing/recovery. Existing valid row contract unchanged.
+- **Evidence:** parent Full CI #44896164022 and Non-3D #44896164051 SUCCESS at `38517af8b6a7e440838ec1b940ec0bd8d1e25540` only. New tests committed in `tests/customer-saved-design-wire.test.ts`; no local execution or matching-head CI yet.
+- **Blockers:** matching-head CI/Non-3D, authenticated two-account browser, disposable DB, independent security review, dependency-complete main intake; physical customer, stock, tailor and device gates remain pending. No production deployment or live DB mutation.
+- **Next slice:** verify exact-head workflows, then independently validate customer cloud ownership using two authenticated browser accounts and disposable database before isolated main intake.
+
+
+## 2026-11-21 — Hostile accessor fail-closed boundary
+- **Parent:** `24b496d7e415a27f16b5b998e571d413e4926d7b`; **code:** `f8e200fc875416a0696c72b95f7d127044c627bf`; **regression:** `b64127bbc3ea7c6183dab103a5d38fa17703f194`.
+- **Criterion:** malformed in-memory saved-design payloads with throwing getters or Proxy traps must return invalid rather than crash the owner-scoped write/read validation boundary.
+- **Evidence:** previous parent Full CI #44905677566 and Non-3D #44905677558 SUCCESS. New source and negative regression committed; no local tests run; matching-head CI for new SHA pending at checkpoint. No physical or staging verification claimed.
+- **Blockers:** authenticated two-account browser and disposable database verification, independent security review, isolated dependency-complete main intake; real stock, tailor, operator, device and native geometry acceptance remain PENDING/BLOCKED.
+- **Next slice:** verify exact-head CI, perform authenticated owner-switch isolation with disposable DB, then assess safe main-based intake. No deployment or live-data mutations.
+
+
+## 2026-11-21 — Exact-head CI verification of hostile accessor regression
+- **Verified parent/head:** `704b6788096e4b0cf207e537e64721857f29b1da` (previous checkpoint; no new application code in this verification slice).
+- **Criterion:** automated customer saved-design hostile-accessor regression and full non-3D engineering suite at the same commit.
+- **Evidence:** GitHub Actions Full CI run #44910930048 **SUCCESS** and Deep Engine Non-3D QA run #44910930033 **SUCCESS**, both fetched by exact commit SHA. This is automated CI evidence, not independently executed local tests, authenticated browser pilot, staging, or physical approval.
+- **Main safety:** live main `480fbea8c110bef9505fd8ccd072bf0fd69dea2b` retains `vercel.json` git.deploymentEnabled=false; candidate branch compared to main at 291 ahead / 33 behind. Entire stacked branch is **NOT** eligible for main merge.
+- **Blockers:** customer two-account real authenticated browser isolation, disposable PostgreSQL ownership/RLS integration, independent review, dependency-complete main-based intake, stock/tailor/operator/device/native 3D human evidence all remain PENDING/BLOCKED.
+- **Next acceptance slice:** build an isolated main-based cloud saved-design wire + client dependency intake, with actual account isolation and disposable DB checks; do not merge until exact-intake-head CI, browser, security and release gates pass. No deployment or live data mutation.
