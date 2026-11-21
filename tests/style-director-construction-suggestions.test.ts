@@ -352,3 +352,34 @@ test("canonical linked option groups guard missing waistband without suppressing
   assert.deepEqual(styleDirectorConstructionSuggestions(complete).map(x =>
     [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]]);
 });
+
+test("accessor-backed ancillary fields cannot execute during advisory garment copying", () => {
+  const spec = makeSpec();
+  spec.pant.type = "wide_leg_relaxed_drape";
+  spec.pant.fit = "slim_tapered";
+  let getterCalls = 0;
+  Object.defineProperty(spec.pant, "untrustedLegacyField", {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalls++;
+      throw new Error("must not evaluate a saved accessor");
+    },
+  });
+  assert.deepEqual(styleDirectorConstructionSuggestions(spec), [],
+    "accessor-backed trouser data must not produce a construction repair");
+  assert.equal(getterCalls, 0, "advisory review must not invoke a hostile getter");
+
+  const independent = makeSpec();
+  independent.shirt.sleeve = "half_sleeve";
+  independent.shirt.cuff = "french_double_cuff";
+  independent.pant.type = "wide_leg_relaxed_drape";
+  independent.pant.fit = "slim_tapered";
+  Object.defineProperty(independent.pant, "untrustedLegacyField", {
+    enumerable: true,
+    get() { throw new Error("must not evaluate a saved accessor"); },
+  });
+  assert.deepEqual(styleDirectorConstructionSuggestions(independent).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]],
+    "unsafe trouser data must not suppress a valid independent shirt suggestion");
+});
