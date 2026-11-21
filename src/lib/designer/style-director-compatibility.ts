@@ -1962,7 +1962,7 @@ export function styleDirectorConstructionSuggestions(
     // individual proposals are considered. An accessor in any of these
     // fields could execute arbitrary code, so refuse the unsafe record.
     const requiredFields = garment === "shirt"
-      ? ["type", "sleeve", "cuff", "collar", "placket", "wear", "fit"]
+      ? ["type", "sleeve", "cuff", "collar", "placket", "wear", "fit", "button", "pocket", "collarFinish"]
       : ["type", "fit", "pleat", "rise", "waistband", "hem", "break"];
     const descriptors = Object.getOwnPropertyDescriptors(descriptor.value);
     if (requiredFields.some(field => {
