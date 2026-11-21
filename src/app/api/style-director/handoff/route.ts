@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
+import { parseBoundedStyleDirectorHandoffJson } from "@/lib/designer/style-director-handoff-request";
+import { readStyleDirectorAuditId } from "@/lib/designer/style-director-handoff-audit";
 import { verifyStyleDirectorHandoffToken, styleDirectorHandoffMatches } from "@/lib/designer/style-director-handoff";
 import type { DesignerClimate, DesignerIntention, DesignerStyle, OccasionTier } from "@/lib/designer/engine";
 import { validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
@@ -9,7 +11,8 @@ export const runtime="nodejs";
 
 export async function POST(request:Request){
   try{
-    const body=await request.json() as {token?:string;shirtId?:string;pantId?:string;occasion?:OccasionTier;climate?:DesignerClimate;intention?:DesignerIntention;style?:DesignerStyle;styleSpec?:StyleSpecV2};
+    const body=await parseBoundedStyleDirectorHandoffJson(request) as {token?:string;shirtId?:string;pantId?:string;occasion?:OccasionTier;climate?:DesignerClimate;intention?:DesignerIntention;style?:DesignerStyle;styleSpec?:StyleSpecV2}|null;
+    if(!body) return NextResponse.json({error:"Invalid Style Director handoff request."},{status:400});
     const token=String(body.token||"");
     const payload=verifyStyleDirectorHandoffToken(token);
     if(!payload) return NextResponse.json({error:"Style Director handoff token is invalid or expired."},{status:409});
@@ -18,28 +21,36 @@ export async function POST(request:Request){
       return NextResponse.json({error:"Designer state no longer matches the signed Style Director handoff."},{status:409});
     }
 
+    // Signed design validity does not prove that an optional cloud audit saved.
+    const notAudited=()=>NextResponse.json({verified:true,audited:false,auditId:null,sourceLookId:payload.sourceLookId});
     const cloud=getSupabaseAdminConfig();
-    if(!cloud) return NextResponse.json({verified:true,audited:false,auditId:null,sourceLookId:payload.sourceLookId});
-    const tokenFingerprint=createHash("sha256").update(token).digest("hex");
-    const response=await fetch(cloud.url.replace(/\/$/,"")+"/rest/v1/rpc/style_director_handoff_audit_record_v2",{
-      method:"POST",
-      headers:{...supabaseAdminHeaders(cloud),"content-type":"application/json",accept:"application/json"},
-      body:JSON.stringify({
-        p_source_look_id:payload.sourceLookId,
-        p_shirt_id:payload.shirtId,
-        p_pant_id:payload.pantId,
-        p_occasion:payload.occasion,
-        p_token_fingerprint:tokenFingerprint,
-      }),
-      cache:"no-store",
-      signal:AbortSignal.timeout(8_000),
-    });
-    if(!response.ok){
-      console.error("[style-director/handoff] audit failed",response.status,(await response.text()).slice(0,240));
-      return NextResponse.json({verified:true,audited:false,auditId:null,sourceLookId:payload.sourceLookId});
+    if(!cloud) return notAudited();
+    try {
+      const tokenFingerprint=createHash("sha256").update(token).digest("hex");
+      const response=await fetch(cloud.url.replace(/\/$/,"")+"/rest/v1/rpc/style_director_handoff_audit_record_v2",{
+        method:"POST",
+        headers:{...supabaseAdminHeaders(cloud),"content-type":"application/json",accept:"application/json"},
+        body:JSON.stringify({
+          p_source_look_id:payload.sourceLookId,
+          p_shirt_id:payload.shirtId,
+          p_pant_id:payload.pantId,
+          p_occasion:payload.occasion,
+          p_token_fingerprint:tokenFingerprint,
+        }),
+        cache:"no-store",
+        signal:AbortSignal.timeout(8_000),
+      });
+      if(!response.ok){
+        console.error("[style-director/handoff] audit unavailable",response.status);
+        return notAudited();
+      }
+      const auditId=await readStyleDirectorAuditId(response);
+      if(!auditId) return notAudited();
+      return NextResponse.json({verified:true,audited:true,auditId,sourceLookId:payload.sourceLookId});
+    } catch {
+      console.error("[style-director/handoff] audit unavailable (details redacted).");
+      return notAudited();
     }
-    const auditId=await response.json() as string;
-    return NextResponse.json({verified:true,audited:true,auditId,sourceLookId:payload.sourceLookId});
   }catch(error){
     console.error("[style-director/handoff]",error);
     return NextResponse.json({error:"Style Director handoff could not be verified."},{status:400});
