@@ -383,3 +383,33 @@ test("accessor-backed ancillary fields cannot execute during advisory garment co
     [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]],
     "unsafe trouser data must not suppress a valid independent shirt suggestion");
 });
+
+
+test("unrelated saved-spec accessors are never evaluated while reviewing construction", () => {
+  const locked = makeSpec();
+  locked.pant.type = "wide_leg_relaxed_drape";
+  locked.pant.fit = "slim_tapered";
+  locked.shirt.sleeve = "half_sleeve";
+  locked.shirt.cuff = "french_double_cuff";
+  let getterCalls = 0;
+  Object.defineProperty(locked, "legacyExtension", {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalls++;
+      throw new Error("unrelated saved-spec accessor must not run");
+    },
+  });
+  Object.freeze(locked.shirt);
+  Object.freeze(locked.pant);
+  Object.freeze(locked);
+  const first = styleDirectorConstructionSuggestions(locked);
+  assert.deepEqual(first.map(item => [item.optionGroup, item.proposedId]), [
+    ["shirt.cuff", "open_short_hem_cuff"],
+    ["pant.fit", "wide_leg_drape"],
+  ]);
+  assert.deepEqual(styleDirectorConstructionSuggestions(locked), first);
+  assert.equal(getterCalls, 0);
+  assert.equal(locked.pant.fit, "slim_tapered");
+  assert.equal(locked.shirt.cuff, "french_double_cuff");
+});
