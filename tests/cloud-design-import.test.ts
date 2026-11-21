@@ -49,6 +49,15 @@ test("unsupported versions, unsafe claims, and incomplete renderable recipes lea
   assert.throws(() => importCloudDesignExport(storage, { ...exportData, renderSet: { renders: [] } }));
   assert.throws(() => importCloudDesignExport(storage, { ...exportData,
     version: { ...exportData.version, specHash: "mismatched" } }));
+  for (const renderSet of [
+    { ...exportData.renderSet, designVersionId: 123 },
+    { ...exportData.renderSet, designVersionId: null },
+    { ...exportData.renderSet, specHash: 123 },
+    { ...exportData.renderSet, specHash: null },
+  ]) assert.throws(() => importCloudDesignExport(storage, { ...exportData, renderSet }));
+  assert.throws(() => importCloudDesignExport(storage, {
+    ...exportData, version: { ...exportData.version, specHash: 123 },
+  }));
   assert.equal(storage.writes(), 0);
   assert.equal(storage.read(), original);
 });
