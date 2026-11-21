@@ -2000,6 +2000,18 @@ export function styleDirectorConstructionSuggestions(
     const linkedGroups = garment === "pant"
       ? (["pant.fit", "pant.pleat", "pant.rise", "pant.waistband", "pant.hem", "pant.break"] as const)
       : (["shirt.sleeve", "shirt.cuff"] as const);
+    // A saved shirt may carry additional construction choices. If present,
+    // these must be recognised before recommending a cuff alteration; an
+    // unknown collar, placket, wear or fit cannot be silently certified.
+    if (garment === "shirt" &&
+        (["shirt.collar", "shirt.placket", "shirt.wear", "shirt.fit"] as const)
+          .some(group => {
+            const field = group.split(".")[1];
+            const value = styleDirectorLockedOptionValue(spec.shirt, field);
+            return value !== undefined &&
+              (typeof value !== "string" ||
+                !optionsFor(group).some(option => option.id === value));
+          })) continue;
     if (linkedGroups.some(group => {
       const field = group.split(".")[1];
       const value = styleDirectorLockedOptionValue(spec[garment], field);
