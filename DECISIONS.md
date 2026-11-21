@@ -563,3 +563,28 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
+
+## 2026-11-20 — Worker C: authenticated vault-to-Designer customer journey
+
+- Reuse the existing authenticated design-vault RPC `loadOwned` and the existing immutable lock, signed share and verified enquiry endpoints. No new credential, storage adapter, schema, public recovery URL or paid service.
+- The account vault provides a per-item integrity-checked, on-demand recipe inspection and reuses the original revision for share/enquiry; it does not send measurement data to the public share payload.
+- An account-owned vault UUID in `/designer-studio?resumeVault=` is an identifier, **not an access token**. The Designer must POST it to the owner-authenticated vault API and separately verify the hash; neither a copied UUID nor a non-owner session can read a saved recipe.
+- A verified modern StyleSpec v2 recipe can be projected onto an **editable descendant**. Restore only closed-vocabulary construction IDs, matching catalogue garment categories, allowed context values and a validated body preview. Reject unsupported legacy, tampered or out-of-catalogue recipes without changing the existing draft. Store the source revision ID as the parent of the next lock; do not import the original lock into mutable state.
+- A new editable draft never proves old physical fabric facts, stock, creative treatments, measurements or tailor release. Account inspection preserves the full original locked spec; product copy requires fresh assessment/review before a new lock.
+- No new migration needed. Existing locked-recipe and recovery-token contracts retain their current shape; old recipes remain loadable, shareable and exportable even when they cannot be safely projected into the current Designer. Browser draft localStorage remains a convenience only, never secure ownership.
+- Browser QA at 390 / 768 / 1440 and exact-head independent checks remain merge gates; no physical evidence is inferred from synthetic CI.
+
+## 2026-11-20 — Worker C: separate fabric discovery and validated new-design entry
+
+- Replace legacy `/catalog` redirect with a read-only catalogue using the Designer's existing live stock adapter and fabric discovery semantics. Physical/stock claims remain provenance-labelled, with unverified fallback clearly disclosed.
+- Customer carries only a bounded, validated pair of garment-category fabric IDs into Designer, never a recovery key, private measurements, locked recipe, paid provider or order record.
+- Designer waits for the same server-backed catalogue, restores neither another draft's private fit nor saved revision lineage, and requires a new assessment before a lock or enquiry. Existing vault, signed-share and Director handoffs remain independent.
+- No new dependency, schema or migration. Synthetic Chromium at 390/768/1440 and exact-head independent CI are required before merge.
+
+## 2026-11-20 — Worker C: evidence-aware fabric shortlists before Designer
+
+- The /catalog flow now allows independent, capped three-item shirt and trouser fabric comparisons. Comparison selections are read-only and do not change the primary fabric pair or locked revision, share token or customer vault.
+- A pure helper validates garment categories and existing catalogue IDs, caps/uniquifies comparison selections and prunes removed or invalid items after a refreshed catalogue; no localStorage, private backend writes or new customer tracking.
+- Each comparison uses the existing Fabric Discovery evidence descriptors. Missing GSM, physical availability, colour calibration and pattern-scale evidence remain explicitly unknown; unreviewed fibre descriptions are labeled as such. No fabricated supplier or measurement evidence.
+- The user must explicitly choose a compared cloth before the existing exact-ID Designer handoff changes. New tests cover maximum size, category rejection, catalogue refresh, provenance and responsive synthetic-browser flow at 390/768/1440.
+- No new dependencies, database migrations, FASHN calls, Vercel deployment or physical stock mutations. Original assets and model identity unchanged. Human physical confirmation remains a separate production gate.

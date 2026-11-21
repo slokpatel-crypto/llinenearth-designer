@@ -731,15 +731,28 @@ async function run(){
     await splitSlider.focus();
     await splitSlider.press("Home");
     assert.equal(await splitSlider.inputValue(),"0");
+    assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-split-view"),"selected");
+    assert.equal(await page.locator(".newDesignerPhotoTag").textContent(),"FRONT / STUDIO MODEL · CUTS APPROX.");
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Your look.");
     assert.match(await page.locator(".newDesignerPhotoSplitSource").evaluate(node=>getComputedStyle(node).clipPath),/100%/,
       "zero original coverage must reveal only the selected fabric");
     await splitSlider.press("End");
     assert.equal(await splitSlider.inputValue(),"100");
+    assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-split-view"),"source");
+    assert.equal(await page.locator(".newDesignerPhotoTag").textContent(),"SOURCE / WIDE TROUSER PHOTO");
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Studio source.");
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
     assert.match(await page.locator(".newDesignerPhotoSplitSource").evaluate(node=>getComputedStyle(node).clipPath),/inset\(0px 0%/,
       "full original coverage must expose the complete unedited source");
     await splitSlider.press("Home");
     for(let i=0;i<50;i++)await splitSlider.press("ArrowRight");
     assert.equal(await splitSlider.inputValue(),"50");
+    assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-split-view"),"split");
+    assert.equal(await page.locator(".newDesignerPhotoTag").textContent(),"SPLIT / SOURCE + SELECTED");
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Source + your look.");
+    assert.equal(await page.getByRole("button",{name:"Save selected design",exact:true}).isEnabled(),true,
+      "split view must name the selected canvas that Save exports");
     await page.getByRole("button",{name:"Collar",exact:true}).click();
     await page.waitForTimeout(360);
     const splitTransforms=await page.locator(".newDesignerPhotoStage").evaluate(stage=>{
@@ -762,6 +775,7 @@ async function run(){
     assert.equal(await page.getByRole("button",{name:"Split compare",exact:true}).isDisabled(),true,
       "source Compare must not offer a second conflicting source overlay");
     summary.viewports[summary.viewports.length-1].sourceSplitInteractionVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceSplitModeTruthVerified=true;
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
       "source Compare must never inherit selected-preview garment boundary geometry");
     assert.equal(await page.getByRole("button",{name:"Hide boundaries",exact:true}).isDisabled(),true);

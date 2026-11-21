@@ -268,13 +268,15 @@ test("legacy customer design routes consolidate onto the photo-first experiences
 });
 
 
-test("legacy customer modules redirect into the consolidated experience",()=>{
+test("customer catalogue uses verified fabric discovery while legacy routes stay consolidated",()=>{
   const catalog=readFileSync("src/app/catalog/page.tsx","utf8");
   const atelier=readFileSync("src/app/atelier/page.tsx","utf8");
   const designs=readFileSync("src/app/designs/page.tsx","utf8");
   const knowledge=readFileSync("src/app/knowledge/page.tsx","utf8");
 
-  assert.match(catalog,/redirect\("\/designer-studio"\)/);
+  assert.match(catalog,/fetch\("\/api\/designer\/catalog"/);
+  assert.match(catalog,/catalogHandoffPath\(selectedShirt,selectedPant\)/);
+  assert.doesNotMatch(catalog,/redirect\("\/designer-studio"\)/);
   assert.match(atelier,/redirect\("\/account"\)/);
   assert.match(designs,/redirect\("\/account"\)/);
   assert.match(knowledge,/redirect\("\/style-director"\)/);

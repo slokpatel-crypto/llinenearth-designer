@@ -5,7 +5,7 @@ import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { photoConstructionMismatches, photoPatternPanelPlacementDisclosure, photoPatternScaleDisclosure } from "@/lib/designer/photo-preview-fidelity";
 import { photoFabricCaptionSafeCrop } from "@/lib/designer/photo-fabric-caption-crop";
-import { photoSourceSplitClip } from "@/lib/designer/photo-source-split";
+import { photoSourceSplitClip, photoSourceSplitMode } from "@/lib/designer/photo-source-split";
 import { PHOTO_INSPECTION_FOCUS, PHOTO_INSPECTION_TARGETS, type PhotoInspectionFocus } from "@/lib/designer/photo-inspection-focus";
 import type { CSSProperties } from "react";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
@@ -1806,10 +1806,31 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     }, "image/png");
   }
 
+  const activeSplitMode=splitCompare&&ready&&!showOriginal&&!showCreativeAi
+    ? photoSourceSplitMode(splitPercent)
+    : null;
+  const sourceOnlyVisible=showOriginal&&ready&&!showCreativeAi || activeSplitMode==="source";
+  const sourceAndSelectedVisible=activeSplitMode==="split";
+  const selectedStageLabel=constructionMismatches.length > 0
+    ? "FRONT / STUDIO MODEL · CUTS APPROX."
+    : "FRONT / STUDIO MODEL";
+  const sourceStageLabel=templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO";
+  const stageLabel=error
+    ? "PREVIEW UNAVAILABLE"
+    : !ready
+      ? "PREPARING SELECTED LOOK"
+      : showCreativeAi&&creativeAi
+        ? `${photorealView.toUpperCase()} / PHOTOREAL`
+        : sourceOnlyVisible
+          ? sourceStageLabel
+          : sourceAndSelectedVisible
+            ? "SPLIT / SOURCE + SELECTED"
+            : selectedStageLabel;
+
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
     <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
-      <span>{showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"}</span>
-      <h2 id="designerPhotoTitle">{showOriginal && ready && !showCreativeAi ? "Studio source." : "Your look."}</h2>
+      <span>{sourceOnlyVisible ? "SOURCE REFERENCE" : sourceAndSelectedVisible ? "SOURCE + SELECTED" : "LIVE PREVIEW"}</span>
+      <h2 id="designerPhotoTitle">{sourceOnlyVisible ? "Studio source." : sourceAndSelectedVisible ? "Source + your look." : "Your look."}</h2>
     </div>
     {showOriginal && ready && !showCreativeAi && <div className="newDesignerPhotoConstructionNotice" data-photo-source-comparison={templateId==="wide"?"wide":"studio"} role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
       <strong>Original source photo, not your selected design</strong> · {templateId==="wide"
@@ -1820,7 +1841,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
     </div>}
     {!showOriginal && !showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px",lineHeight:1.6,margin:"10px 20px 12px",padding:"12px 14px",background:"#faf6f0",borderLeft:"3px solid #a65d43",color:"#514538",overflowWrap:"anywhere"}} data-photo-caption="instant" data-photo-pattern-placement={panelPlacementVerified?"verified":"unverified"} data-photo-scale-trust={patternedPlacementItems.length===0?"no-visible-repeat":previewScaleVerified?"verified":"approximate"}><strong>Instant preview</strong> · Studio model; {photoPatternTruthNotice}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
-    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-photo-focus={photoFocus} data-photo-split={splitCompare&&ready&&!showOriginal&&!showCreativeAi?"true":"false"} style={photoInspectionStyle} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
+    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-photo-focus={photoFocus} data-photo-split={splitCompare&&ready&&!showOriginal&&!showCreativeAi?"true":"false"} data-photo-split-view={activeSplitMode??"inactive"} style={photoInspectionStyle} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-hidden={!ready || showOriginal || showCreativeAi} aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} style={{visibility:ready?"visible":"hidden"}} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
       {showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
@@ -1852,7 +1873,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           <path d={template.trouserPath} className="trouserBoundary" />
         </>}
       </svg>}
-      <span className="newDesignerPhotoTag">{error ? "PREVIEW UNAVAILABLE" : !ready ? "PREPARING SELECTED LOOK" : showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready ? (templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO") : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
+      <span className="newDesignerPhotoTag">{stageLabel}</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
@@ -1862,8 +1883,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       Physical fit, construction and colour still require validation.
     </p>}
     <div className="newDesignerPhotoSummary newDesignerPhotoSummaryCompact">
-      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"}</b></span><strong title={shirt.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{shirt.name}</b></strong></div>
-      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"}</b></span><strong title={pant.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{pant.name}</b></strong></div>
+      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{sourceOnlyVisible || sourceAndSelectedVisible ? "SELECTED SHIRT" : "SHIRT"}</b></span><strong title={shirt.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{shirt.name}</b></strong></div>
+      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{sourceOnlyVisible || sourceAndSelectedVisible ? "SELECTED TROUSER" : "TROUSER"}</b></span><strong title={pant.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{pant.name}</b></strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
         {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>Lock final design</b></button>}
         {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</b></button>}
@@ -1872,7 +1893,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         {!creativeAi && !creativeDirection && finalLocked && <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}><b style={PHOTO_ACTION_LABEL_STYLE}>Unlock</b></button>}
         <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={() => {setSplitCompare(false);setSplitPercent(50);setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</b></button>
         <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} aria-pressed={splitCompare&&!showOriginal&&!showCreativeAi} onClick={()=>{setShowOriginal(false);setSplitPercent(50);setSplitCompare(value=>!value);}} disabled={!ready||showOriginal||showCreativeAi}><b style={PHOTO_ACTION_LABEL_STYLE}>{splitCompare ? "Close split" : "Split compare"}</b></button>
-        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={download} disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</b></button>
+        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={download} disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save" : splitCompare&&!showCreativeAi ? "Save selected design" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</b></button>
       </div>
     </div>
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}

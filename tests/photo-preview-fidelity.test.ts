@@ -261,8 +261,11 @@ test("fabric changes cannot leave stale canvas or source-compare imagery visible
   assert.ok(reset.includes('setSplitPercent(50);'),"new look must reset the source split thumb");
   assert.ok(reset.includes('setCreativeAi(null);'),"new look must clear the previous photoreal image");
   assert.ok(source.includes('showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"'));
-  // The source comparison and reviewed photoreal image cannot overlay each other.
-  assert.ok(source.includes('showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready'));
+  // The source comparison and reviewed photoreal image cannot overlay each other,
+  // and their truthful status labels are resolved from mutually exclusive state.
+  assert.ok(source.includes('const activeSplitMode=splitCompare&&ready&&!showOriginal&&!showCreativeAi'));
+  assert.ok(source.includes('showCreativeAi&&creativeAi'));
+  assert.ok(source.includes('sourceOnlyVisible'));
   assert.ok(source.includes('onClick={()=>{setShowOriginal(false);setSplitCompare(false);setShowCreativeAi((value)=>!value);}}'));
   assert.ok(source.includes('onClick={() => {setSplitCompare(false);setSplitPercent(50);setShowCreativeAi(false);setShowOriginal((value) => !value);}}'));
 });
@@ -325,7 +328,8 @@ test("the underlying deterministic image is not announced when a source/photorea
 
 test("preview status does not claim a rendered photograph while pending or failed", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('error ? "PREVIEW UNAVAILABLE" : !ready ? "PREPARING SELECTED LOOK"'));
+  assert.match(source,/const stageLabel=error\s*\? "PREVIEW UNAVAILABLE"\s*:\s*!ready\s*\? "PREPARING SELECTED LOOK"/);
+  assert.ok(source.includes('<span className="newDesignerPhotoTag">{stageLabel}</span>'));
   assert.ok(source.includes('aria-busy={!ready && !error}'));
   assert.ok(source.includes('style={{visibility:ready?"visible":"hidden"}}'));
 });
@@ -347,10 +351,10 @@ test("source comparison shows one provenance banner while the physical caveat be
 
 test("source reference header and selected-fabric labels are not mistaken for photographed clothes", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"'));
-  assert.ok(source.includes('<h2 id="designerPhotoTitle">{showOriginal && ready && !showCreativeAi ? "Studio source." : "Your look."}</h2>'));
-  assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"'));
-  assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"'));
+  assert.ok(source.includes('sourceOnlyVisible ? "SOURCE REFERENCE" : sourceAndSelectedVisible ? "SOURCE + SELECTED" : "LIVE PREVIEW"'));
+  assert.ok(source.includes('sourceOnlyVisible ? "Studio source." : sourceAndSelectedVisible ? "Source + your look." : "Your look."'));
+  assert.ok(source.includes('sourceOnlyVisible || sourceAndSelectedVisible ? "SELECTED SHIRT" : "SHIRT"'));
+  assert.ok(source.includes('sourceOnlyVisible || sourceAndSelectedVisible ? "SELECTED TROUSER" : "TROUSER"'));
   assert.ok(source.includes('Original source photo, not your selected design'));
 });
 

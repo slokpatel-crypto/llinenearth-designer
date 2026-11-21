@@ -33,6 +33,8 @@ import {
 } from "@/lib/designer/fabric-discovery";
 import { optionById, optionsFor } from "@/lib/designer/options/library";
 import { readReferenceOutfitHandoff } from "@/lib/designer/reference-outfit-handoff";
+import { allowLocalFitHydration, ownedDesignResumePath, ownedRevisionToDraft, readSharedDesignDraft } from "@/lib/designer/customer-vault-journey";
+import { readCatalogFabricHandoff } from "@/lib/designer/catalog-handoff";
 import {
   fromLegacyStyle,
   mergeLegacyIntoStyleSpec,
@@ -121,6 +123,7 @@ export function DesignerModule() {
   const [pantId, setPantId] = useState(DESIGNER_PANTS.find((item) => item.id === DESIGNER_REVIEWED_PAIRING.pantId)?.id ?? DESIGNER_PANTS[0]?.id ?? "");
   const [shirtOptions, setShirtOptions] = useState<DesignerFabric[]>(DESIGNER_SHIRTS);
   const [pantOptions, setPantOptions] = useState<DesignerFabric[]>(DESIGNER_PANTS);
+  const [catalogueReady,setCatalogueReady]=useState(false);
   const [occasion, setOccasion] = useState<OccasionTier>(DESIGNER_REVIEWED_PAIRING.occasion);
   const [style, setStyle] = useState<DesignerStyle>(() => designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion));
   const [styleSpec,setStyleSpec]=useState<StyleSpecV2>(()=>fromLegacyStyle(designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion)));
@@ -136,6 +139,8 @@ export function DesignerModule() {
   const [draftReady, setDraftReady] = useState(false);
   const [directorHandoff, setDirectorHandoff] = useState(false);
   const [referenceHandoffStatus, setReferenceHandoffStatus] = useState<"applied" | "invalid" | null>(null);
+  const [sharedHandoffStatus,setSharedHandoffStatus]=useState<"applied"|"invalid"|null>(null);
+  const [catalogHandoffStatus,setCatalogHandoffStatus]=useState<"applied"|"invalid"|null>(null);
   const [directorHandoffTitle, setDirectorHandoffTitle] = useState("");
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
@@ -162,6 +167,8 @@ export function DesignerModule() {
   const [vaultBusy,setVaultBusy]=useState(false);
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
+  const [vaultResumeStatus,setVaultResumeStatus]=useState<"idle"|"loading"|"loaded"|"error">("idle");
+  const [vaultResumeMessage,setVaultResumeMessage]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [craftRequest,setCraftRequest]=useState<CreativeCraftRequest>({...DEFAULT_CRAFT_REQUEST});
   const creativeRequestRef=useRef<{controller:AbortController;stamp:number}|null>(null);
@@ -267,6 +274,10 @@ export function DesignerModule() {
   },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
 
   useEffect(() => {
+    // Shared and account-owned revisions are explicit handoffs. Do not silently
+    // mix private measurements from another local draft into these recipes.
+    const handoff=new URLSearchParams(window.location.search);
+    if(!allowLocalFitHydration(handoff)) return;
     try {
       const raw = localStorage.getItem(MEASUREMENT_STORAGE_KEY);
       if (!raw) return;
@@ -276,6 +287,8 @@ export function DesignerModule() {
   },[]);
 
   useEffect(() => {
+    const handoff=new URLSearchParams(window.location.search);
+    if(!allowLocalFitHydration(handoff)) return;
     try {
       const raw = localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY);
       if (!raw) return;
@@ -299,6 +312,7 @@ export function DesignerModule() {
         setShirtId((current)=>nextShirts.some((item)=>item.id===current) ? current : (nextShirts[0]?.id || current));
         setPantId((current)=>nextPants.some((item)=>item.id===current) ? current : (nextPants[0]?.id || current));
       } catch { /* Static catalogue remains a safe fallback. */ }
+      finally { if(!cancelled) setCatalogueReady(true); }
     }
     void loadCalibratedCatalogue();
     return () => { cancelled = true; };
@@ -344,6 +358,8 @@ export function DesignerModule() {
       const params = new URLSearchParams(window.location.search);
       const fromDirector = params.get("from") === "style-director";
       const fromReference = params.get("from") === "reference-match";
+      const fromShared = params.get("from") === "shared-design";
+      const fromCatalog = params.get("from") === "fabric-catalog";
       setDirectorHandoff(fromDirector);
       if (fromReference) {
         const pair = readReferenceOutfitHandoff(params, DESIGNER_SHIRTS, DESIGNER_PANTS);
@@ -353,6 +369,23 @@ export function DesignerModule() {
           nextPantId = pair.pantId;
         }
       }
+      if(fromShared){
+        const shared=readSharedDesignDraft(params,DESIGNER_SHIRTS,DESIGNER_PANTS);
+        setSharedHandoffStatus(shared?"applied":"invalid");
+        if(shared){
+          nextShirtId=shared.shirtId;
+          nextPantId=shared.pantId;
+          nextOccasion=shared.occasion;
+          nextClimate=shared.climate;
+          nextIntention=shared.intention;
+          nextStyle=shared.style;
+          nextStyleSpec=shared.styleSpec;
+          // A public link carries no body measurements or personal creative draft.
+          // Never inherit private local browser state while reconstructing it.
+          nextBodyProfile=undefined;
+        }
+      }
+      if(fromCatalog)nextBodyProfile=undefined;
       if(fromDirector) nextStyleSpec=undefined;
 
       if (fromDirector) {
@@ -438,7 +471,7 @@ export function DesignerModule() {
       setStyleSpec(nextStyleSpec || fromLegacyStyle(nextStyle));
       setBodyProfile(nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE);
 
-      if(!fromDirector && !fromReference && parsed?.creative &&
+      if(!fromDirector && !fromReference && !fromShared && !fromCatalog && parsed?.creative &&
         parsed.creative.recommendation?.shirt?.id===nextShirtId &&
         parsed.creative.recommendation?.pant?.id===nextPantId &&
         parsed.creative.recommendation?.occasion===nextOccasion &&
@@ -494,6 +527,102 @@ export function DesignerModule() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, styleSpec, bodyProfile, creative:activeCreative, creativeVisualReview }));
     } catch { /* Designer remains usable if browser storage is unavailable. */ }
   }, [draftReady, shirtId, pantId, occasion, climate, intention, style, styleSpec, bodyProfile, activeCreative, creativeVisualReview]);
+
+  useEffect(()=>{
+    if(!draftReady||!catalogueReady) return;
+    const vaultId=new URLSearchParams(window.location.search).get("resumeVault");
+    if(!vaultId) return;
+    if(!ownedDesignResumePath(vaultId)){
+      setVaultResumeStatus("error");
+      setVaultResumeMessage("Invalid saved-design link. Your current Designer draft was not changed.");
+      return;
+    }
+    let cancelled=false;
+    const controller=new AbortController();
+    setVaultResumeStatus("loading");
+    setVaultResumeMessage("Retrieving your account-owned recipe…");
+    void (async()=>{
+      try{
+        const response=await fetch("/api/designer/vault",{
+          method:"POST",headers:{"content-type":"application/json"},
+          cache:"no-store",signal:controller.signal,
+          body:JSON.stringify({action:"loadOwned",vaultId}),
+        });
+        const data=await response.json() as {revision?:LockedDesignRevision;error?:string};
+        if(!response.ok||!data.revision) throw new Error(data.error||"Saved design could not be loaded.");
+        const draft=await ownedRevisionToDraft(data.revision,shirtOptions,pantOptions);
+        if(!draft) throw new Error("The saved recipe cannot be safely edited with the current catalogue and StyleSpec v2. The original remains intact in your account.");
+        if(cancelled) return;
+        // No lock is imported into a mutable UI. Lock a new revision only after
+        // a fresh Designer assessment; the original remains immutable in vault.
+        setShirtId(draft.shirtId);
+        setPantId(draft.pantId);
+        setOccasion(draft.occasion);
+        setClimate(draft.climate);
+        setIntention(draft.intention);
+        setStyle(draft.style);
+        setStyleSpec(draft.styleSpec);
+        setBodyProfile(draft.bodyProfile||DEFAULT_BODY_PREVIEW_PROFILE);
+        setLastLockedRevisionId(draft.parentRevisionId);
+        setLockedRevision(null);
+        setRecommendation(null);
+        setAssessment(null);
+        setActiveCreative(null);
+        setCreativeDirections([]);
+        setCreativeVisualReview(null);
+        setResponse(null);
+        setFeedbackReason(null);
+        setSearchResults([]);
+        setAdvisorEpoch(value=>value+1);
+        setVaultResumeStatus("loaded");
+        setVaultResumeMessage("An editable descendant draft is ready. The original locked recipe remains unchanged. Reassess material availability, fit and any creative treatments before locking the next revision.");
+      }catch(error){
+        if(cancelled) return;
+        setVaultResumeStatus("error");
+        setVaultResumeMessage(error instanceof Error?error.message:"Unable to reopen saved recipe.");
+      }
+    })();
+    return ()=>{cancelled=true;controller.abort();};
+  // A signed-in vault handoff is loaded once per Designer navigation, never on every keystroke.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[draftReady,catalogueReady]);
+
+
+  useEffect(()=>{
+    if(!draftReady||!catalogueReady)return;
+    const params=new URLSearchParams(window.location.search);
+    if(params.get("from")!=="fabric-catalog")return;
+    const pair=readCatalogFabricHandoff(params,shirtOptions,pantOptions);
+    if(!pair){
+      setCatalogHandoffStatus("invalid");
+      return;
+    }
+    // An explicit catalogue choice replaces the fabric pair, not an existing
+    // vault revision, personal fit measurement or historical assessment.
+    setShirtId(pair.shirtId);
+    setPantId(pair.pantId);
+    const freshStyle=designerStyleForOccasion(occasion);
+    setStyle(freshStyle);
+    setStyleSpec(fromLegacyStyle(freshStyle));
+    setBodyProfile(DEFAULT_BODY_PREVIEW_PROFILE);
+    setMeasurementProfile(null);
+    setTailorObservations(null);
+    setLastLockedRevisionId(null);
+    setLockedRevision(null);
+    setAssessment(null);
+    setRecommendation(null);
+    setRecommendationId(null);
+    setSearchResults([]);
+    setActiveCreative(null);
+    setCreativeDirections([]);
+    setCreativeVisualReview(null);
+    setResponse(null);
+    setFeedbackReason(null);
+    setAdvisorEpoch(x=>x+1);
+    setCatalogHandoffStatus("applied");
+  // Only apply once after both the previous draft and server catalogue are ready.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[draftReady,catalogueReady]);
 
   useEffect(()=>{
     if(!draftReady) return;
@@ -579,6 +708,9 @@ export function DesignerModule() {
 
   function resetDraft() {
     setAdvisorEpoch((current)=>current+1);
+    setLastLockedRevisionId(null);
+    setVaultResumeStatus("idle");
+    setVaultResumeMessage("");
     const nextOccasion = DESIGNER_REVIEWED_PAIRING.occasion;
     setShirtId(DESIGNER_REVIEWED_PAIRING.shirtId);
     setPantId(DESIGNER_REVIEWED_PAIRING.pantId);
@@ -1201,14 +1333,15 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",revision:lockedRevision}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;accountOwned?:boolean;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
+      const ownership=result.accountOwned===true?"Linked to your signed-in account.":"Account ownership not confirmed. Keep the recovery token and claim the design under My Account.";
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
-        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days. ${ownership}`);
       }catch{
-        setVaultMessage("Secure cloud copy saved. Copy the recovery token below and keep it private.");
+        setVaultMessage(`Secure cloud copy saved. Copy the recovery token below and keep it private. ${ownership}`);
       }
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
@@ -1238,6 +1371,24 @@ export function DesignerModule() {
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
+        {vaultResumeStatus!=="idle"&&<div className="newDesignerHandoff" role={vaultResumeStatus==="error"?"alert":"status"}>
+          <span>ACCOUNT VAULT / {vaultResumeStatus==="loaded"?"EDITABLE DESCENDANT":vaultResumeStatus==="loading"?"LOADING":"RESUME UNAVAILABLE"}</span>
+          <p>{vaultResumeMessage}</p>
+          <Link href="/account">Return to private vault →</Link>
+        </div>}
+        {catalogHandoffStatus&&<div className="newDesignerHandoff" role={catalogHandoffStatus==="invalid"?"alert":"status"}>
+          <span>FABRIC CATALOGUE / {catalogHandoffStatus==="applied"?"CLOTH PAIR LOADED":"SELECTION NOT APPLIED"}</span>
+          <p>{catalogHandoffStatus==="applied"
+            ?"Your exact catalogue shirt and trouser fabric IDs are loaded. This is a fresh editable design, not a stock reservation or a continuation of any previous locked revision. Recheck availability and fit before saving."
+            :"This catalogue link is invalid or its fabrics are no longer available in the current catalogue. No fabric pair was imported."}</p>
+          <Link href="/catalog">Browse the fabric catalogue →</Link>
+        </div>}
+        {sharedHandoffStatus&&<div className="newDesignerHandoff" role={sharedHandoffStatus==="invalid"?"alert":"status"}>
+          <span>SHARED RECIPE / {sharedHandoffStatus==="applied"?"NEW EDITABLE DRAFT":"LINK NOT APPLIED"}</span>
+          <p>{sharedHandoffStatus==="applied"
+            ?"The shared fabric pair and supported photographed construction choices have been applied. This is not the original locked recipe; advanced cuts, measurements, live stock and production facts must be reviewed again."
+            :"The shared selection cannot be safely reconstructed. Your existing draft is unchanged."}</p>
+        </div>}
         {referenceHandoffStatus === "applied" && <div className="newDesignerHandoff" role="status">
           <span>REFERENCE LOOK / EXPLICIT FABRIC PAIR</span>
           <strong>Your chosen photo-inspired outfit fabrics are loaded.</strong>
@@ -1537,6 +1688,7 @@ export function DesignerModule() {
                   <p><b>Recovery token:</b> keep this private. Anyone with it can recover this locked design until it expires.</p>
                   <textarea readOnly value={vaultRecoveryToken} rows={3} aria-label="Secure design recovery token"/>
                   <Link href="/recover-design">Open design recovery →</Link>
+                  <Link href="/account">My Account · view or claim this design →</Link>
                 </>}
               </>}
             </>}

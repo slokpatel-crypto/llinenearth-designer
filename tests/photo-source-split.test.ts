@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { photoSourceSplitClip } from "../src/lib/designer/photo-source-split.ts";
+import { photoSourceSplitClip, photoSourceSplitMode } from "../src/lib/designer/photo-source-split.ts";
 
 test("source split clip is deterministic, bounded and never changes stored pixels", () => {
   assert.equal(photoSourceSplitClip(0),"inset(0 100% 0 0)");
@@ -15,6 +15,19 @@ test("source split clip is deterministic, bounded and never changes stored pixel
   assert.equal(photoSourceSplitClip(25.6),"inset(0 74% 0 0)");
 });
 
+test("source split mode truthfully distinguishes both endpoints from a mixed wipe", () => {
+  assert.equal(photoSourceSplitMode(-12),"selected");
+  assert.equal(photoSourceSplitMode(0),"selected");
+  assert.equal(photoSourceSplitMode(0.49),"selected");
+  assert.equal(photoSourceSplitMode(0.51),"split");
+  assert.equal(photoSourceSplitMode(50),"split");
+  assert.equal(photoSourceSplitMode(99.49),"split");
+  assert.equal(photoSourceSplitMode(99.51),"source");
+  assert.equal(photoSourceSplitMode(100),"source");
+  assert.equal(photoSourceSplitMode(250),"source");
+  assert.equal(photoSourceSplitMode(NaN),"split");
+});
+
 test("customer slider is only a source overlay, not a saved design or AI source", () => {
   const component=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(component,/const \[splitCompare,setSplitCompare\]=useState\(false\)/);
@@ -24,6 +37,10 @@ test("customer slider is only a source overlay, not a saved design or AI source"
   assert.match(component,/newDesignerPhotoSplitOriginal/);
   assert.match(component,/showBoundaries && ready && !showOriginal && !showCreativeAi && !splitCompare/);
   assert.match(component,/aria-label="Original photograph coverage"/);
+  assert.match(component,/data-photo-split-view=\{activeSplitMode\?\?"inactive"\}/);
+  assert.match(component,/"SPLIT \/ SOURCE \+ SELECTED"/);
+  assert.match(component,/"Source \+ your look\."/);
+  assert.match(component,/"Save selected design"/);
   assert.match(component,/setSplitCompare\(false\);\s*setSplitPercent\(50\);/);
   assert.match(component,/Save exports the selected design, not the split/);
   const signature=component.slice(component.indexOf("const renderSignature=JSON.stringify({"),component.indexOf("const requestScope=",component.indexOf("const renderSignature=JSON.stringify({")));

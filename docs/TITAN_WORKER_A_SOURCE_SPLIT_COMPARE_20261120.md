@@ -41,3 +41,20 @@ now clear the split. The old 7-button source contract becomes 8 with the new
 accessible split action. Tests now assert the full reset, mutual exclusion,
 new disabled/pressed states and all eight consistent 44px actions. The prior
 behaviour was preserved, and fresh exact-head CI/browser QA is required.
+
+## 2026-11-21 independent screenshot truth correction
+
+Inspection of the exact-head CI artifact from `8a194604958a9a663147cb35570a1c17f871e5ff`
+at 390, 768 and 1440px found that the 50% wipe still overlaid the selected-only
+`FRONT / STUDIO MODEL · CUTS APPROX.` badge on top of original source pixels.
+At 100% source coverage the heading still said `Your look.`, and the generic
+`Save` label did not state that it exports the hidden selected canvas.
+
+The follow-up derives a deterministic `selected` / `split` / `source` view mode
+from the bounded slider value. The heading and in-photo badge now describe the
+actual visible endpoint or mixed wipe, selected fabric names are explicitly
+labelled while source pixels are present, and the action says `Save selected
+design` throughout split mode. The source photograph, selected Canvas pixels,
+style recipe, fabric calibration and export behavior remain unchanged. Chromium
+must prove the 0/50/100 labels and save-target wording at 390/768/1440, with
+fresh screenshot inspection and exact-head CI before acceptance.

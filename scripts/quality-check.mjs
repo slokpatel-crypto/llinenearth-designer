@@ -286,16 +286,25 @@ const legacyCatalogRoute=fs.readFileSync("src/app/catalog/page.tsx","utf8");
 const legacyAtelierRoute=fs.readFileSync("src/app/atelier/page.tsx","utf8");
 const legacyDesignsRoute=fs.readFileSync("src/app/designs/page.tsx","utf8");
 const legacyKnowledgeRoute=fs.readFileSync("src/app/knowledge/page.tsx","utf8");
-if(!legacyCatalogRoute.includes('redirect("/designer-studio")')) throw new Error("Legacy catalog route must redirect to the photographic Designer.");
+// The catalogue is now a separate fabric-discovery step, but must still use the
+// existing server-backed Designer stock and strictly validated pair IDs.
+const catalogHandoff=fs.readFileSync("src/lib/designer/catalog-handoff.ts","utf8");
+for(const token of ['fetch("/api/designer/catalog"',"catalogHandoffPath(selectedShirt,selectedPant)","discoverFabrics(shirts","discoverFabrics(pants"]) {
+  if(!legacyCatalogRoute.includes(token)) throw new Error(`Fabric discovery contract missing: ${token}`);
+}
+for(const token of ["VALID_ID.test(shirtId)","VALID_ID.test(pantId)","params.getAll(\"shirt\")","params.getAll(\"pant\")","allowedGarments.includes(\"shirt\")","allowedGarments.includes(\"pant\")"]) {
+  if(!catalogHandoff.includes(token)) throw new Error(`Catalogue ID validation regressed: ${token}`);
+}
+if(legacyCatalogRoute.includes('redirect("/designer-studio")')) throw new Error("Fabric catalogue unexpectedly reverted to a redirect.");
+console.log("Catalogue discovery gate passed: server-backed stock search and category-validated, bounded Designer handoff.");
 for(const [label,source] of [["atelier",legacyAtelierRoute],["saved designs",legacyDesignsRoute]]) if(!source.includes('redirect("/account")')) throw new Error(`Legacy ${label} route must redirect to My Account.`);
 if(!legacyKnowledgeRoute.includes('redirect("/style-director")')) throw new Error("Legacy Fashion Brain route must redirect to Style Director.");
 for(const [label,source,tokens] of [
-  ["catalog",legacyCatalogRoute,["catalogGarments","Live Visual"]],
   ["atelier",legacyAtelierRoute,["AtelierQueueClient"]],
   ["saved designs",legacyDesignsRoute,["SavedDesignsClient"]],
   ["Fashion Brain",legacyKnowledgeRoute,["FASHION BRAIN","WearTypeVisual"]],
 ]) for(const token of tokens) if(source.includes(token)) throw new Error(`Legacy customer module regression: ${label} still exposes ${token}.`);
-console.log("Legacy customer module gate passed: Catalog, Atelier, Saved Designs and Fashion Brain no longer expose separate customer experiences.");
+console.log("Legacy customer module gate passed: Atelier, Saved Designs and Fashion Brain stay on their approved routes.");
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
