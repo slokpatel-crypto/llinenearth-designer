@@ -29,7 +29,7 @@ async function json(response: Response): Promise<unknown> {
   // compromised endpoint buffer an unbounded private response in the browser.
   const limit = 25 * 1024 * 1024;
   const declared = response.headers.get("content-length");
-  if (declared !== null && (!/^\\d+$/.test(declared) || Number(declared) > limit))
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > limit))
     throw new Error("Invalid cloud saved-design response.");
   if (!response.body) throw new Error("Invalid cloud saved-design response.");
   const reader = response.body.getReader();
