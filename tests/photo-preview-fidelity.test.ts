@@ -255,12 +255,19 @@ test("fabric changes cannot leave stale canvas or source-compare imagery visible
   // Loading another fabric must not show the previous finished canvas.
   assert.ok(source.includes('aria-busy={!ready && !error}'));
   assert.ok(source.includes('style={{visibility:ready?"visible":"hidden"}}'));
-  assert.ok(source.includes('setShowOriginal(false);\n    setCreativeAi(null);'));
+  const reset=source.slice(source.indexOf("useLayoutEffect(() => {"),source.indexOf("},[requestScope]);"));
+  assert.ok(reset.includes('setShowOriginal(false);'),"new look must clear the original source photo");
+  assert.ok(reset.includes('setSplitCompare(false);'),"new look must clear any source split");
+  assert.ok(reset.includes('setSplitPercent(50);'),"new look must reset the source split thumb");
+  assert.ok(reset.includes('setCreativeAi(null);'),"new look must clear the previous photoreal image");
   assert.ok(source.includes('showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"'));
-  // The source comparison and reviewed photoreal image cannot overlay each other.
-  assert.ok(source.includes('showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready'));
-  assert.ok(source.includes('onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}'));
-  assert.ok(source.includes('onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}}'));
+  // The source comparison and reviewed photoreal image cannot overlay each other,
+  // and their truthful status labels are resolved from mutually exclusive state.
+  assert.ok(source.includes('const activeSplitMode=splitCompare&&ready&&!showOriginal&&!showCreativeAi'));
+  assert.ok(source.includes('showCreativeAi&&creativeAi'));
+  assert.ok(source.includes('sourceOnlyVisible'));
+  assert.ok(source.includes('onClick={()=>{setShowOriginal(false);setSplitCompare(false);setShowCreativeAi((value)=>!value);}}'));
+  assert.ok(source.includes('onClick={() => {setSplitCompare(false);setSplitPercent(50);setShowCreativeAi(false);setShowOriginal((value) => !value);}}'));
 });
 
 test("source comparison cannot silently export or lock a different pictured design", () => {
@@ -285,8 +292,8 @@ test("Compare shows original-photo provenance above the canvas instead of select
 
 test("boundary QA belongs only to the ready deterministic garment canvas", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
-  assert.ok(source.includes('disabled={!ready || showOriginal || showCreativeAi} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi}'));
+  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && !splitCompare && <svg className="newDesignerBoundaryQa"'));
+  assert.ok(source.includes('disabled={!ready || showOriginal || showCreativeAi || splitCompare} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi && !splitCompare}'));
   // Boundary outlines are derived from original garment masks and must never
   // be advertised as validated photoreal geometry or source-photo contours.
   assert.ok(source.includes('Garment boundary QA overlay'));
@@ -300,7 +307,7 @@ test("Zoom Fit uses the same scale and origin for the garment canvas and its QA 
   assert.ok(source.includes('transform:inspectFit?`scale(${photoInspection.scale})`:"scale(1)"')); 
   assert.ok(source.includes('transformOrigin:`${photoInspection.originX}% ${photoInspection.originY}%`'));
   assert.ok(source.includes('"--studio-inspect-origin"'));
-  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
+  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && !splitCompare && <svg className="newDesignerBoundaryQa"'));
 });
 
 test("a changed look does not keep a previous photo zoom or diagnostic garment seams", () => {
@@ -321,7 +328,8 @@ test("the underlying deterministic image is not announced when a source/photorea
 
 test("preview status does not claim a rendered photograph while pending or failed", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('error ? "PREVIEW UNAVAILABLE" : !ready ? "PREPARING SELECTED LOOK"'));
+  assert.match(source,/const stageLabel=error\s*\? "PREVIEW UNAVAILABLE"\s*:\s*!ready\s*\? "PREPARING SELECTED LOOK"/);
+  assert.ok(source.includes('<span className="newDesignerPhotoTag">{stageLabel}</span>'));
   assert.ok(source.includes('aria-busy={!ready && !error}'));
   assert.ok(source.includes('style={{visibility:ready?"visible":"hidden"}}'));
 });
@@ -343,10 +351,10 @@ test("source comparison shows one provenance banner while the physical caveat be
 
 test("source reference header and selected-fabric labels are not mistaken for photographed clothes", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"'));
-  assert.ok(source.includes('<h2 id="designerPhotoTitle">{showOriginal && ready && !showCreativeAi ? "Studio source." : "Your look."}</h2>'));
-  assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"'));
-  assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"'));
+  assert.ok(source.includes('sourceOnlyVisible ? "SOURCE REFERENCE" : sourceAndSelectedVisible ? "SOURCE + SELECTED" : "LIVE PREVIEW"'));
+  assert.ok(source.includes('sourceOnlyVisible ? "Studio source." : sourceAndSelectedVisible ? "Source + your look." : "Your look."'));
+  assert.ok(source.includes('sourceOnlyVisible || sourceAndSelectedVisible ? "SELECTED SHIRT" : "SHIRT"'));
+  assert.ok(source.includes('sourceOnlyVisible || sourceAndSelectedVisible ? "SELECTED TROUSER" : "TROUSER"'));
   assert.ok(source.includes('Original source photo, not your selected design'));
 });
 
@@ -448,8 +456,12 @@ test("compact photo actions are legible and scroll-reachable on short desktop sc
   const end=source.indexOf("\n      </div>",start);
   assert.ok(start>0 && end>start);
   const markup=source.slice(start,end);
-  assert.equal((markup.match(/style=\{PHOTO_ACTION_BUTTON_STYLE\}/g)||[]).length,7);
-  assert.equal((markup.match(/<b style=\{PHOTO_ACTION_LABEL_STYLE\}>/g)||[]).length,7);
+  assert.equal((markup.match(/style=\{PHOTO_ACTION_BUTTON_STYLE\}/g)||[]).length,8);
+  assert.equal((markup.match(/<b style=\{PHOTO_ACTION_LABEL_STYLE\}>/g)||[]).length,8);
+  assert.ok(markup.includes('aria-pressed={splitCompare&&!showOriginal&&!showCreativeAi}'));
+  assert.ok(markup.includes('disabled={!ready||showOriginal||showCreativeAi}'));
+  assert.ok(markup.includes('Split compare'));
+  assert.ok(markup.includes('Close split'));
   assert.ok(markup.includes("Compare"));
   assert.ok(markup.includes("Show design"));
   assert.ok(markup.includes("Save trusted preview"));
