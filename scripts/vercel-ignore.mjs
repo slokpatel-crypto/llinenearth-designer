@@ -1,16 +1,21 @@
 const PRIMARY_PROJECT_ID = "prj_b3rwwOl5OI0VV3qYyKXPFOloCllT";
 const PRODUCTION_BRANCH = "main";
 const APPROVED_PREVIEW_BRANCHES = new Set(["work/anthropic-knowledge-harvest-20261013-v1", "fix/garment-viewer-identity-honesty-20261015"]);
+// Only an explicit commit-subject prefix authorizes a milestone build.
+// Mentioning [deploy] later in an ordinary message is not release approval.
 const DEPLOY_MARKER = "[deploy]";
+const DEPLOY_PREFIX = /^\[deploy\](?:\s|$)/i;
 
+// Vercel ignoreCommand: exit 0 skips the build; exit 1 allows it.
+// Unknown deployment metadata must never serve as implicit approval.
 const current = process.env.VERCEL_PROJECT_ID;
 const branch = process.env.VERCEL_GIT_COMMIT_REF;
 const commitMessage = process.env.VERCEL_GIT_COMMIT_MESSAGE;
 const environment = process.env.VERCEL_ENV;
 
 if (!current) {
-  console.log("VERCEL_PROJECT_ID unavailable; continue build fail-safe.");
-  process.exit(1);
+  console.log("VERCEL_PROJECT_ID unavailable; ignore build without a verified project.");
+  process.exit(0);
 }
 
 if (current !== PRIMARY_PROJECT_ID) {
@@ -31,16 +36,25 @@ if (branch && branch !== PRODUCTION_BRANCH) {
 }
 
 if (!branch) {
-  console.log("VERCEL_GIT_COMMIT_REF unavailable; continue build fail-safe.");
-  process.exit(1);
+  console.log("VERCEL_GIT_COMMIT_REF unavailable; ignore build without a verified branch.");
+  process.exit(0);
+}
+
+if (environment !== "production") {
+  console.log("Primary main branch requires VERCEL_ENV=production; ignore unverified build environment.");
+  process.exit(0);
 }
 
 if (typeof commitMessage !== "string" || !commitMessage.trim()) {
-  console.log("VERCEL_GIT_COMMIT_MESSAGE unavailable on main; continue build fail-safe.");
-  process.exit(1);
+  console.log("VERCEL_GIT_COMMIT_MESSAGE unavailable on main; ignore build without milestone evidence.");
+  process.exit(0);
 }
 
-if (!commitMessage.toLowerCase().includes(DEPLOY_MARKER)) {
+// VERCEL_GIT_COMMIT_MESSAGE may include a subject followed by a body.
+// Never authorize a deployment from a marker in the body or after a blank subject.
+// A CR-only line break also ends the subject; do not strip leading whitespace.
+const commitSubject = commitMessage.split(/\r\n|\n|\r/, 1)[0];
+if (!DEPLOY_PREFIX.test(commitSubject)) {
   console.log("Primary main commit has no [deploy] milestone marker; ignore automatic production build.");
   process.exit(0);
 }
