@@ -1994,8 +1994,12 @@ export function styleDirectorConstructionSuggestions(
     // An alternative must not introduce a new construction contradiction
     // elsewhere in the separately saved specification. Evaluate a shallow,
     // ephemeral copy only; never alter locked IDs or persist a repair.
+    // Copy only the two declared garment records. Spreading the outer saved
+    // object would evaluate unrelated legacy accessor properties, which are
+    // not part of this pure construction review.
     const proposedSpec = {
-      ...suggestedSpec,
+      shirt: suggestedSpec.shirt,
+      pant: suggestedSpec.pant,
       [garment]: { ...suggestedSpec[garment], [key]: proposedId },
     } as Pick<StyleSpecV2, "shirt" | "pant">;
     const proposedIssueCounts = new Map<DirectorConstructionIssue["code"], number>();
