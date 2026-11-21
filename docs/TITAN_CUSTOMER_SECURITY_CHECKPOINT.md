@@ -433,3 +433,11 @@ Regression commit: `3645658707910ec4a7a7bc474cb2c64cadeae90a`.
 Criterion: customer owner-scoped cloud list/get/save/delete responses must not buffer unbounded server data. Added 25 MiB upper bound (24 designs at <=1 MiB each plus framing), preflight Content-Length validation, streamed byte counting and strict UTF-8/JSON decoding. Added declared-size, malformed-length, oversized streamed body and malformed JSON regressions.
 Evidence: code and regression committed, **matching-head CI/Non-3D and browser tests PENDING**. The successful workflows above predate these changes and do not certify them. No local tests executed, no live services or database touched.
 Next slice: verify exact-head workflows; review the 25 MiB ceiling against actual API response limits and two-account browser privacy, then isolate a dependency-complete main intake only after all gates pass. Customer pilot, stock, tailor, native and staging security acceptance remain BLOCKED/PENDING. No Vercel deployment or main merge.
+
+## 2026-11-21 — Numeric Content-Length cloud response regression
+
+Parent SHA: `fae070edf21606269270dcc633a7db47ca64ca17`. Code SHA: `a13598d39d9d66c3d1631568a33162abd1b21b96`. Regression SHA: `6f42cb917ab74a8f74ff041f9fa949ed5960f778`.
+
+Customer cloud save/list/get/delete response parser mistakenly used a literal-backslash digit pattern (`/^\\\\d+$/` in source representation), rejecting all ordinary numeric Content-Length headers. Corrected it to the digit character class and added an end-to-end client regression asserting valid numeric Content-Length across all four operations. Affected criterion: authenticated durable saved-design recovery and account operations must accept valid bounded HTTP responses while rejecting malformed/oversized responses.
+
+Evidence: source inspection and committed regression only. Full CI, Non-3D QA, build and browser/disposable database tests at regression SHA **NOT YET VERIFIED**; do not treat this milestone as technically accepted or main-merge eligible. No real customer records or live database were touched. Next: verify matching-head CI; inspect main-based dependency-complete intake and perform authenticated two-account browser and disposable DB checks. Physical stock, tailor, device and native 3D proof remain PENDING.
