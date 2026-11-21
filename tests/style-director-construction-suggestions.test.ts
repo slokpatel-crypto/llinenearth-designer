@@ -263,3 +263,33 @@ test("unknown saved garment types cannot certify a construction alternative", ()
   retiredShirt.shirt.cuff = "french_double_cuff";
   assert.deepEqual(styleDirectorConstructionSuggestions(retiredShirt), []);
 });
+
+test("retired sibling construction IDs prevent unprovable alternatives for that garment", () => {
+  const locked = makeSpec();
+  locked.pant.type = "wide_leg_relaxed_drape";
+  locked.pant.fit = "slim_tapered";
+  locked.pant.rise = "retired_rise" as StyleSpecV2["pant"]["rise"];
+  const original = JSON.stringify(locked);
+  Object.freeze(locked.shirt);
+  Object.freeze(locked.pant);
+  Object.freeze(locked);
+  assert.ok(styleDirectorConstructionIssues(locked).some(issue =>
+    issue.code === "wide_leg_tapered_fit_mismatch"));
+  assert.deepEqual(styleDirectorConstructionSuggestions(locked), [],
+    "a valid type does not prove compatibility with a retired sibling option");
+  assert.equal(JSON.stringify(locked), original);
+
+  const known = makeSpec();
+  known.pant.type = "wide_leg_relaxed_drape";
+  known.pant.fit = "slim_tapered";
+  assert.deepEqual(styleDirectorConstructionSuggestions(known).map(x =>
+    [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]]);
+
+  const independent = makeSpec();
+  independent.shirt.sleeve = "half_sleeve";
+  independent.shirt.cuff = "french_double_cuff";
+  independent.pant.rise = "retired_rise" as StyleSpecV2["pant"]["rise"];
+  assert.deepEqual(styleDirectorConstructionSuggestions(independent).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]],
+    "invalid trouser option must not suppress independent valid shirt guidance");
+});
