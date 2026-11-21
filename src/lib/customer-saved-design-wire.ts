@@ -78,8 +78,18 @@ export function parseCustomerSavedDesignRow(value: unknown): {
     typeof value.updated_at !== "string" ||
     !Number.isFinite(Date.parse(value.updated_at)) ||
     !record(value.payload)) return null;
-  const payload = parseCustomerSavedDesignWrite(
-    value.payload, new TextEncoder().encode(JSON.stringify(value.payload)).length);
+  // RPC rows are untrusted input. JSON serialization can throw for cyclic
+  // objects, BigInt or hostile toJSON methods; reject instead of crashing
+  // the entire account listing/recovery path.
+  let serializedBytes: number;
+  try {
+    const serialized = JSON.stringify(value.payload);
+    if (typeof serialized !== "string") return null;
+    serializedBytes = new TextEncoder().encode(serialized).length;
+  } catch {
+    return null;
+  }
+  const payload = parseCustomerSavedDesignWrite(value.payload, serializedBytes);
   if (!payload || (value.design_id !== undefined &&
     value.design_id !== payload.designId)) return null;
   return value as {payload: CustomerSavedDesignWrite; updated_at: string; design_id?: string};
