@@ -1896,6 +1896,184 @@ export function styleDirectorConstructionIssues(
 }
 
 /**
+ * Non-binding tailoring alternatives for construction contradictions that
+ * have a single, existing canonical option capable of resolving the named
+ * issue. These are suggestions for customer/tailor review, NEVER automatic
+ * repairs to saved, locked or measured specifications. Ambiguous pleat
+ * direction, photographed accuracy and physical fit remain review-only.
+ *
+ * This is an ephemeral pure decision result, not a persisted schema.
+ */
+export type DirectorConstructionSuggestion = Readonly<{
+  cause: DirectorConstructionIssue["code"];
+  optionGroup: "shirt.cuff" | "pant.fit" | "pant.pleat" | "pant.rise" |
+    "pant.waistband" | "pant.hem" | "pant.break";
+  savedId: string;
+  proposedId: string;
+  explanation: string;
+}>;
+
+const directorConstructionProposals: Partial<Record<
+  DirectorConstructionIssue["code"],
+  readonly [DirectorConstructionSuggestion["optionGroup"], string]
+>> = {
+  short_sleeve_double_cuff: ["shirt.cuff", "open_short_hem_cuff"],
+  short_sleeve_cuff_review: ["shirt.cuff", "open_short_hem_cuff"],
+  flat_front_has_pleat: ["pant.pleat", "flat_front"],
+  high_rise_type_mismatch: ["pant.rise", "high_rise"],
+  gurkha_tab_waistband_mismatch: ["pant.waistband", "extended_tab"],
+  linen_drawstring_waistband_mismatch: ["pant.waistband", "drawstring_elastic"],
+  wide_leg_tapered_fit_mismatch: ["pant.fit", "wide_leg_drape"],
+  cropped_type_hem_mismatch: ["pant.hem", "cropped_above_ankle_hem"],
+  cropped_break_hem_mismatch: ["pant.hem", "cropped_above_ankle_hem"],
+  cropped_slight_break: ["pant.break", "no_break"],
+  cropped_half_break: ["pant.break", "no_break"],
+  cropped_full_break: ["pant.break", "no_break"],
+  cropped_stacked_break: ["pant.break", "no_break"],
+};
+
+/**
+ * Surface a bounded, catalogue-validated way to resolve a mismatch without
+ * claiming that the customer agreed, the photo shows it, or a tailor approved
+ * the construction. Missing, retired and accessor-backed saved IDs must not
+ * receive a substitute ID recommendation.
+ */
+export function styleDirectorConstructionSuggestions(
+  spec: Pick<StyleSpecV2, "shirt" | "pant">,
+  occasion?: OccasionTier,
+): DirectorConstructionSuggestion[] {
+  // Malformed legacy payloads may be null or non-record values at runtime.
+  // Fail closed before reading any saved garment fields.
+  if (spec === null || typeof spec !== "object") return [];
+  // A saved spec must be a plain JSON-shaped record. Inherited properties
+  // are not part of a versioned locked design and cannot certify repairs.
+  const rootPrototype = Object.getPrototypeOf(spec);
+  if (rootPrototype !== Object.prototype && rootPrototype !== null) return [];
+  // Saved construction data is JSON-shaped. Prototype-backed records can
+  // execute inherited getters during issue evaluation, before any proposed
+  // garment copy is checked. Abstain rather than execute those accessors.
+  for (const garment of ["shirt", "pant"] as const) {
+    const descriptor = Object.getOwnPropertyDescriptor(spec, garment);
+    if (!descriptor || !Object.hasOwn(descriptor, "value") ||
+        !descriptor.value || typeof descriptor.value !== "object") return [];
+    const prototype = Object.getPrototypeOf(descriptor.value);
+    if (prototype !== Object.prototype && prototype !== null) return [];
+    // Required construction fields are read by the issue evaluator before
+    // individual proposals are considered. An accessor in any of these
+    // fields could execute arbitrary code, so refuse the unsafe record.
+    const requiredFields = garment === "shirt"
+      ? ["type", "sleeve", "cuff", "collar", "placket", "wear", "fit", "button", "pocket", "collarFinish"]
+      : ["type", "fit", "pleat", "rise", "waistband", "hem", "break"];
+    const descriptors = Object.getOwnPropertyDescriptors(descriptor.value);
+    if (requiredFields.some(field => {
+      const own = descriptors[field];
+      return own !== undefined && !Object.hasOwn(own, "value");
+    })) return [];
+  }
+  const suggestions: DirectorConstructionSuggestion[] = [];
+  const seen = new Set<string>();
+  const currentIssues = styleDirectorConstructionIssues(spec, occasion);
+  // Track multiplicity, not only distinct codes: a proposed repair must not
+  // create another instance of an already-reported construction fault.
+  let workingIssueCounts = new Map<DirectorConstructionIssue["code"], number>();
+  for (const issue of currentIssues) {
+    workingIssueCounts.set(issue.code, (workingIssueCounts.get(issue.code) ?? 0) + 1);
+  }
+  // Validate the complete set of recommendations as it is assembled, not
+  // merely each change against the original saved state. Suggestions remain
+  // review-only; this working copy is never written back to the customer.
+  let suggestedSpec: Pick<StyleSpecV2, "shirt" | "pant"> = spec;
+  for (const issue of currentIssues) {
+    const proposal = directorConstructionProposals[issue.code];
+    if (!proposal) continue;
+    const [optionGroup, proposedId] = proposal;
+    const [garment, key] = optionGroup.split(".") as ["shirt" | "pant", string];
+    // A retired or missing garment type cannot establish which construction
+    // alternatives are safe. Abstain for that garment rather than suggesting
+    // a canonical component against an unrecognised saved silhouette.
+    const garmentType = styleDirectorLockedOptionValue(spec[garment], "type");
+    if (typeof garmentType !== "string" ||
+        !optionsFor(`${garment}.type`).some(option => option.id === garmentType)) continue;
+    // A known garment type is insufficient when another saved construction
+    // field is retired. Do not certify a proposed repair against an unknown
+    // sibling option: the validator cannot prove compatibility with it.
+    const linkedGroups = garment === "pant"
+      ? (["pant.fit", "pant.pleat", "pant.rise", "pant.waistband", "pant.hem", "pant.break"] as const)
+      : (["shirt.sleeve", "shirt.cuff"] as const);
+    // A saved shirt may carry additional construction choices. If present,
+    // these must be recognised before recommending a cuff alteration; an
+    // unknown collar, placket, wear, fit, button or pocket cannot be silently certified.
+    if (garment === "shirt" &&
+        (["shirt.collar", "shirt.placket", "shirt.wear", "shirt.fit", "shirt.button", "shirt.pocket"] as const)
+          .some(group => {
+            const field = group.split(".")[1];
+            const value = styleDirectorLockedOptionValue(spec.shirt, field);
+            return value !== undefined &&
+              (typeof value !== "string" ||
+                !optionsFor(group).some(option => option.id === value));
+          })) continue;
+    if (linkedGroups.some(group => {
+      const field = group.split(".")[1];
+      const value = styleDirectorLockedOptionValue(spec[garment], field);
+      // A missing linked field is just as unverifiable as a retired ID:
+      // do not assume an implicit default in a saved/locked design.
+      return typeof value !== "string" ||
+        !optionsFor(group).some(option => option.id === value);
+    })) continue;
+    // Spreading a garment with accessor-backed ancillary fields would invoke
+    // user-controlled getters while assembling an advisory candidate. Refuse
+    // that garment entirely; never execute accessors to produce a suggestion.
+    if (Object.values(Object.getOwnPropertyDescriptors(suggestedSpec[garment]))
+      .some(descriptor => !Object.hasOwn(descriptor, "value"))) continue;
+    const savedId = styleDirectorLockedOptionValue(spec[garment], key);
+    const catalog = optionsFor(optionGroup);
+    if (typeof savedId !== "string" ||
+        !catalog.some(option => option.id === savedId) ||
+        !catalog.some(option => option.id === proposedId) ||
+        savedId === proposedId || seen.has(optionGroup)) continue;
+    // An alternative must not introduce a new construction contradiction
+    // elsewhere in the separately saved specification. Evaluate a shallow,
+    // ephemeral copy only; never alter locked IDs or persist a repair.
+    // Copy only the two declared garment records. Spreading the outer saved
+    // object would evaluate unrelated legacy accessor properties, which are
+    // not part of this pure construction review.
+    const proposedSpec = {
+      shirt: suggestedSpec.shirt,
+      pant: suggestedSpec.pant,
+      [garment]: { ...suggestedSpec[garment], [key]: proposedId },
+    } as Pick<StyleSpecV2, "shirt" | "pant">;
+    const proposedIssueCounts = new Map<DirectorConstructionIssue["code"], number>();
+    for (const proposedIssue of styleDirectorConstructionIssues(proposedSpec, occasion)) {
+      proposedIssueCounts.set(proposedIssue.code,
+        (proposedIssueCounts.get(proposedIssue.code) ?? 0) + 1);
+    }
+    if ([...proposedIssueCounts].some(([code, count]) =>
+      count > (workingIssueCounts.get(code) ?? 0))) continue;
+    // A recommendation must actually resolve at least one occurrence of
+    // the contradiction that caused it. Merely changing a canonical ID
+    // without reducing that fault is not a justified tailoring suggestion.
+    // The current working issue multiset was already calculated above.
+    // Reuse its cause count instead of re-running the full construction
+    // validator for every candidate. This also keeps the accepted bundle's
+    // decision based on the same exact issue snapshot.
+    if ((proposedIssueCounts.get(issue.code) ?? 0) >=
+        (workingIssueCounts.get(issue.code) ?? 0)) continue;
+    suggestedSpec = proposedSpec;
+    // Never restore a conflict already resolved by an earlier suggestion.
+    workingIssueCounts = proposedIssueCounts;
+    seen.add(optionGroup);
+    suggestions.push({
+      cause: issue.code,
+      optionGroup,
+      savedId,
+      proposedId,
+      explanation: issue.explanation,
+    });
+  }
+  return suggestions;
+}
+
+/**
  * Fail closed when the legacy photographic style and the versioned garment
  * construction would tell a customer to wear or cut different shirts.
  * Compare named camp/band/cutaway collars by their canonical IDs. Other
