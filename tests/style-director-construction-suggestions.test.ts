@@ -330,3 +330,25 @@ test("missing linked construction IDs cannot certify otherwise valid repairs", (
   assert.deepEqual(styleDirectorConstructionSuggestions(complete).map(x =>
     [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]]);
 });
+
+test("canonical linked option groups guard missing waistband without suppressing independent shirt repairs", () => {
+  const locked = makeSpec();
+  locked.pant.type = "wide_leg_relaxed_drape";
+  locked.pant.fit = "slim_tapered";
+  delete (locked.pant as Partial<StyleSpecV2["pant"]>).waistband;
+  locked.shirt.sleeve = "half_sleeve";
+  locked.shirt.cuff = "french_double_cuff";
+  const before = JSON.stringify(locked);
+  Object.freeze(locked.shirt);
+  Object.freeze(locked.pant);
+  Object.freeze(locked);
+  assert.deepEqual(styleDirectorConstructionSuggestions(locked).map(x =>
+    [x.optionGroup, x.proposedId]), [["shirt.cuff", "open_short_hem_cuff"]]);
+  assert.equal(JSON.stringify(locked), before);
+
+  const complete = makeSpec();
+  complete.pant.type = "wide_leg_relaxed_drape";
+  complete.pant.fit = "slim_tapered";
+  assert.deepEqual(styleDirectorConstructionSuggestions(complete).map(x =>
+    [x.optionGroup, x.proposedId]), [["pant.fit", "wide_leg_drape"]]);
+});
