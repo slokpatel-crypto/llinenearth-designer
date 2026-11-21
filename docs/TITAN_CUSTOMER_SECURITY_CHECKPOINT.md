@@ -457,3 +457,11 @@ Evidence: source and regression committed; no local test execution. Matching-hea
 - **Evidence:** parent Full CI #44896164022 and Non-3D #44896164051 SUCCESS at `38517af8b6a7e440838ec1b940ec0bd8d1e25540` only. New tests committed in `tests/customer-saved-design-wire.test.ts`; no local execution or matching-head CI yet.
 - **Blockers:** matching-head CI/Non-3D, authenticated two-account browser, disposable DB, independent security review, dependency-complete main intake; physical customer, stock, tailor and device gates remain pending. No production deployment or live DB mutation.
 - **Next slice:** verify exact-head workflows, then independently validate customer cloud ownership using two authenticated browser accounts and disposable database before isolated main intake.
+
+
+## 2026-11-21 — Hostile accessor fail-closed boundary
+- **Parent:** `24b496d7e415a27f16b5b998e571d413e4926d7b`; **code:** `f8e200fc875416a0696c72b95f7d127044c627bf`; **regression:** `b64127bbc3ea7c6183dab103a5d38fa17703f194`.
+- **Criterion:** malformed in-memory saved-design payloads with throwing getters or Proxy traps must return invalid rather than crash the owner-scoped write/read validation boundary.
+- **Evidence:** previous parent Full CI #44905677566 and Non-3D #44905677558 SUCCESS. New source and negative regression committed; no local tests run; matching-head CI for new SHA pending at checkpoint. No physical or staging verification claimed.
+- **Blockers:** authenticated two-account browser and disposable database verification, independent security review, isolated dependency-complete main intake; real stock, tailor, operator, device and native geometry acceptance remain PENDING/BLOCKED.
+- **Next slice:** verify exact-head CI, perform authenticated owner-switch isolation with disposable DB, then assess safe main-based intake. No deployment or live-data mutations.
