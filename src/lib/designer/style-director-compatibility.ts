@@ -1945,6 +1945,10 @@ export function styleDirectorConstructionSuggestions(
   // Malformed legacy payloads may be null or non-record values at runtime.
   // Fail closed before reading any saved garment fields.
   if (spec === null || typeof spec !== "object") return [];
+  // A saved spec must be a plain JSON-shaped record. Inherited properties
+  // are not part of a versioned locked design and cannot certify repairs.
+  const rootPrototype = Object.getPrototypeOf(spec);
+  if (rootPrototype !== Object.prototype && rootPrototype !== null) return [];
   // Saved construction data is JSON-shaped. Prototype-backed records can
   // execute inherited getters during issue evaluation, before any proposed
   // garment copy is checked. Abstain rather than execute those accessors.
